@@ -7,43 +7,42 @@
     :class="sidebarToggle ? 'justify-center' : 'justify-between'"
     class="flex items-center gap-2 pt-8 sidebar-header pb-7"
   >
-    <a href="index.html">
-      <span class="logo" :class="sidebarToggle ? 'hidden' : ''">
-        <img class="dark:hidden" src="./images/logo/logo.svg" alt="Logo" />
-        <img
-          class="hidden dark:block"
-          src="./images/logo/logo-dark.svg"
-          alt="Logo"
-        />
+    <a href="index.html" class="flex items-center gap-2">
+      <span class="logo flex items-center" :class="sidebarToggle ? 'hidden' : ''">
+        <span class="text-xl font-bold text-black">bangjeje.dev</span>
+        <span class="ml-2 rounded-md bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-600">CMS</span>
       </span>
-
-      <img
-        class="logo-icon"
-        :class="sidebarToggle ? 'lg:block' : 'hidden'"
-        src="./images/logo/logo-icon.svg"
-        alt="Logo"
-      />
+      <span
+        class="logo-icon flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-sm font-bold text-white"
+        :class="sidebarToggle ? 'lg:flex' : 'hidden'"
+      >
+        B
+      </span>
     </a>
   </div>
   <!-- SIDEBAR HEADER -->
 
   <div
-    class="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar"
+    class="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar h-full"
   >
     <!-- Sidebar Menu -->
     <nav x-data="{selected: $persist('Dashboard')}">
+      
+      <!-- MAIN -->
       <div>
         <h3 class="mb-4 text-xs uppercase leading-[20px] text-gray-400">
-          <span class="menu-group-title" :class="sidebarToggle ? 'lg:hidden' : ''">Dashboard</span>
+          <span class="menu-group-title" :class="sidebarToggle ? 'lg:hidden' : ''">MAIN</span>
         </h3>
         <ul class="flex flex-col gap-4 mb-6">
           <li>
             <a href="index.html" @click="selected = 'Dashboard'" class="menu-item group" :class="selected === 'Dashboard' ? 'menu-item-active' : 'menu-item-inactive'">
-              <span class="menu-item-text">Overview</span>
+              <span class="menu-item-text">Dashboard</span>
             </a>
           </li>
         </ul>
       </div>
+
+      <!-- CONTENT -->
       <div>
         <h3 class="mb-4 text-xs uppercase leading-[20px] text-gray-400">
           <span class="menu-group-title" :class="sidebarToggle ? 'lg:hidden' : ''">CONTENT</span>
@@ -61,6 +60,8 @@
           </li>
         </ul>
       </div>
+
+      <!-- RESOURCES -->
       <div>
         <h3 class="mb-4 text-xs uppercase leading-[20px] text-gray-400">
           <span class="menu-group-title" :class="sidebarToggle ? 'lg:hidden' : ''">RESOURCES</span>
@@ -73,44 +74,46 @@
           </li>
         </ul>
       </div>
+
+      <!-- SYSTEM -->
+      <div>
+        <h3 class="mb-4 text-xs uppercase leading-[20px] text-gray-400">
+          <span class="menu-group-title" :class="sidebarToggle ? 'lg:hidden' : ''">SYSTEM</span>
+        </h3>
+        <ul class="flex flex-col gap-4 mb-6">
+          <li>
+            <a href="#" @click="selected = 'Settings'" class="menu-item group" :class="selected === 'Settings' ? 'menu-item-active' : 'menu-item-inactive'">
+              <span class="menu-item-text">Settings</span>
+            </a>
+          </li>
+        </ul>
+      </div>
     </nav>
-    <div class="mt-auto pb-4">
+    
+    <div class="mt-auto pb-6">
+      <hr class="mb-4 border-gray-100" />
       <ul class="flex flex-col gap-4">
         <li>
           <a href="https://bangjeje.dev" target="_blank" class="menu-item group menu-item-inactive">
-            <span class="menu-item-text">View Website</span>
+            <span class="menu-item-text flex items-center gap-2">
+              View Website
+              <svg class="h-4 w-4 text-gray-400 group-hover:text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </span>
           </a>
         </li>
         <li>
-          <a href="#" class="menu-item group menu-item-inactive">
-            <span class="menu-item-text">Logout</span>
+          <a href="#" class="menu-item group menu-item-inactive text-error-500 hover:bg-error-50">
+            <span class="menu-item-text flex items-center gap-2 text-error-500">
+              Logout
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </span>
           </a>
         </li>
       </ul>
     </div>
-    
-    <!-- Sidebar Menu -->
-
-    <!-- Promo Box -->
-    <div
-      :class="sidebarToggle ? 'lg:hidden' : ''"
-      class="mx-auto mb-10 w-full max-w-60 rounded-2xl bg-gray-50 px-4 py-5 text-center dark:bg-white/[0.03]"
-    >
-      <h3 class="mb-2 font-semibold text-gray-900 dark:text-white">
-        #1 Tailwind CSS Dashboard
-      </h3>
-      <p class="mb-4 text-gray-500 text-theme-sm dark:text-gray-400">
-        Leading Tailwind CSS Admin Template with 400+ UI Component and Pages.
-      </p>
-      <a
-        href="https://tailadmin.com/pricing"
-        target="_blank"
-        rel="nofollow"
-        class="flex items-center justify-center p-3 font-medium text-white rounded-lg bg-brand-500 text-theme-sm hover:bg-brand-600"
-      >
-        Purchase Plan
-      </a>
-    </div>
-    <!-- Promo Box -->
   </div>
 </aside>
