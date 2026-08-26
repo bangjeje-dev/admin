@@ -6,8 +6,12 @@
     <title>Digital Assets | bangjeje.dev CMS</title>
   </head>
   <body
-    x-data="{ page: 'Digital Assets', 'loaded': true, 'darkMode': false, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false, 'pageTitle': 'Digital Assets', 'pageDescription': 'Manage downloadable resources and assets.', 'primaryActionText': 'Upload Asset', 'primaryActionUrl': 'digital-asset-create.html', 'secondaryActionText': '', 'secondaryActionUrl': '' }"
-    class="bg-gray-50 text-gray-800"
+    x-data="{  page: 'Digital Assets', 'loaded': true, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false, 'pageTitle': 'Digital Assets', 'pageDescription': 'Manage downloadable resources and assets.', 'primaryActionText': 'Upload Asset', 'primaryActionUrl': 'digital-asset-create.html', 'secondaryActionText': '', 'secondaryActionUrl': '' , 'darkMode': false }"
+    x-init="
+         darkMode = JSON.parse(localStorage.getItem('darkMode'));
+         $watch('darkMode', value => localStorage.setItem('darkMode', JSON.stringify(value)))"
+    :class="{'dark text-gray-400 bg-gray-dark': darkMode === true}"
+    class="bg-gray-50 text-gray-800 dark:text-white/90"
   >
     <include src="./partials/preloader.html"></include>
     <div class="flex h-screen overflow-hidden">
@@ -19,14 +23,14 @@
             <include src="./partials/page-header.html" />
             <div class="flex flex-col gap-8">
               <!-- Empty State Shell -->
-              <div class="mt-8 flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 py-12 bg-white">
-                <div class="mb-4 rounded-full bg-gray-100 p-4">
+              <div class="mt-8 flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 dark:border-gray-700 py-12 bg-white dark:bg-gray-900">
+                <div class="mb-4 rounded-full bg-gray-100 dark:bg-gray-800 p-4">
                   <svg class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
                 </div>
-                <h4 class="mb-2 text-lg font-semibold text-black">Component shell ready</h4>
-                <p class="mb-5 text-sm text-gray-500">This page is structurally complete but awaits functional implementation.</p>
+                <h4 class="mb-2 text-lg font-semibold text-black dark:text-white">Component shell ready</h4>
+                <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">This page is structurally complete but awaits functional implementation.</p>
               </div>
             </div>
           </div>

@@ -6,8 +6,12 @@
     <title>Dashboard | bangjeje.dev CMS</title>
   </head>
   <body
-    x-data="{ page: 'dashboard', 'loaded': true, 'darkMode': false, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false, 'pageTitle': 'Dashboard', 'pageDescription': 'Overview of your content and digital resources.' }"
-    class="bg-gray-50 text-gray-800"
+    x-data="{  page: 'dashboard', 'loaded': true, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false, 'pageTitle': 'Dashboard', 'pageDescription': 'Overview of your content and digital resources.' , 'darkMode': false }"
+    x-init="
+         darkMode = JSON.parse(localStorage.getItem('darkMode'));
+         $watch('darkMode', value => localStorage.setItem('darkMode', JSON.stringify(value)))"
+    :class="{'dark text-gray-400 bg-gray-dark': darkMode === true}"
+    class="bg-gray-50 text-gray-800 dark:text-white/90"
   >
     <!-- ===== Preloader Start ===== -->
     <include src="./partials/preloader.html"></include>
@@ -26,7 +30,7 @@
         <!-- ===== Header End ===== -->
 
         <!-- ===== Main Content Start ===== -->
-        <main>
+        <main x-data="dashboardData()">
           <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 lg:p-10">
             
             <include src="./partials/page-header.html" />
@@ -37,59 +41,59 @@
               <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
                 
                 <!-- Card 1 -->
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm">
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
                   <div class="flex items-center justify-between">
                     <div>
-                      <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Articles</h4>
-                      <h3 class="mt-2 text-3xl font-bold text-black">24</h3>
+                      <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Articles</h4>
+                      <h3 class="mt-2 text-3xl font-bold text-black dark:text-white" x-text="articles.length"></h3>
                     </div>
-                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-500">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 dark:bg-brand-500/15 text-brand-500">
                       <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2.5 2.5 0 00-2.5-2.5H15M9 11l3 3L22 4" />
                       </svg>
                     </div>
                   </div>
                   <div class="mt-4 flex items-center gap-2">
-                    <span class="inline-block text-sm font-medium text-success-500">+3</span>
-                    <span class="text-sm text-gray-500">this month</span>
+                    <span class="inline-block text-sm font-medium text-success-500 dark:text-success-400"><span x-text="articlesCreatedThisMonth > 0 ? '+' + articlesCreatedThisMonth : articlesCreatedThisMonth"></span></span>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">this month</span>
                   </div>
                 </div>
 
                 <!-- Card 2 -->
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm">
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
                   <div class="flex items-center justify-between">
                     <div>
-                      <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Case Studies</h4>
-                      <h3 class="mt-2 text-3xl font-bold text-black">12</h3>
+                      <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Case Studies</h4>
+                      <h3 class="mt-2 text-3xl font-bold text-black dark:text-white" x-text="caseStudies.length"></h3>
                     </div>
-                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-500">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 dark:bg-brand-500/15 text-brand-500">
                       <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
                     </div>
                   </div>
                   <div class="mt-4 flex items-center gap-2">
-                    <span class="inline-block text-sm font-medium text-success-500">+1</span>
-                    <span class="text-sm text-gray-500">this month</span>
+                    <span class="inline-block text-sm font-medium text-success-500 dark:text-success-400"><span x-text="caseStudiesCreatedThisMonth > 0 ? '+' + caseStudiesCreatedThisMonth : caseStudiesCreatedThisMonth"></span></span>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">this month</span>
                   </div>
                 </div>
 
                 <!-- Card 3 -->
-                <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-sm">
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
                   <div class="flex items-center justify-between">
                     <div>
-                      <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wide">Digital Assets</h4>
-                      <h3 class="mt-2 text-3xl font-bold text-black">8</h3>
+                      <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Digital Assets</h4>
+                      <h3 class="mt-2 text-3xl font-bold text-black dark:text-white" x-text="digitalAssets.length"></h3>
                     </div>
-                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-500">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 dark:bg-brand-500/15 text-brand-500">
                       <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
                     </div>
                   </div>
                   <div class="mt-4 flex items-center gap-2">
-                    <span class="inline-block text-sm font-medium text-gray-400">0</span>
-                    <span class="text-sm text-gray-500">this month</span>
+                    <span class="inline-block text-sm font-medium text-gray-400"><span x-text="digitalAssetsCreatedThisMonth > 0 ? '+' + digitalAssetsCreatedThisMonth : digitalAssetsCreatedThisMonth"></span></span>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">this month</span>
                   </div>
                 </div>
 
@@ -102,9 +106,9 @@
                 <div class="xl:col-span-2 flex flex-col gap-6">
                   
                   <!-- Recent Articles -->
-                  <div class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm">
-                    <div class="border-b border-gray-100 px-6 py-5 flex items-center justify-between">
-                      <h3 class="text-lg font-bold text-black">Recent Articles</h3>
+                  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-theme-sm">
+                    <div class="border-b border-gray-100 dark:border-gray-800 px-6 py-5 flex items-center justify-between">
+                      <h3 class="text-lg font-bold text-black dark:text-white">Recent Articles</h3>
                       <a href="articles.html" class="text-sm font-medium text-brand-500 hover:text-brand-600">View All</a>
                     </div>
                     
@@ -112,128 +116,81 @@
                       <table class="w-full table-auto">
                         <thead>
                           <tr class="bg-gray-50 text-left">
-                            <th class="py-4 px-6 text-sm font-medium text-gray-500">Title</th>
-                            <th class="py-4 px-6 text-sm font-medium text-gray-500">Status</th>
-                            <th class="py-4 px-6 text-sm font-medium text-gray-500">Published</th>
-                            <th class="py-4 px-6 text-sm font-medium text-gray-500">Updated</th>
+                            <th class="py-4 px-6 text-sm font-medium text-gray-500 dark:text-gray-400">Title</th>
+                            <th class="py-4 px-6 text-sm font-medium text-gray-500 dark:text-gray-400">Status</th>
+                            <th class="py-4 px-6 text-sm font-medium text-gray-500 dark:text-gray-400">Published</th>
+                            <th class="py-4 px-6 text-sm font-medium text-gray-500 dark:text-gray-400">Updated</th>
                           </tr>
                         </thead>
                         <tbody>
-                          <tr class="border-b border-gray-100 hover:bg-gray-50">
-                            <td class="py-4 px-6">
-                              <p class="font-medium text-black">Building Better Digital Experiences</p>
-                            </td>
-                            <td class="py-4 px-6">
-                              <span class="inline-flex rounded-full bg-success-50 px-2.5 py-1 text-xs font-medium text-success-600">Published</span>
-                            </td>
-                            <td class="py-4 px-6">
-                              <p class="text-sm text-gray-600">Aug 24, 2026</p>
-                            </td>
-                            <td class="py-4 px-6">
-                              <p class="text-sm text-gray-500">2 days ago</p>
-                            </td>
-                          </tr>
-                          <tr class="border-b border-gray-100 hover:bg-gray-50">
-                            <td class="py-4 px-6">
-                              <p class="font-medium text-black">Why Simplicity and Speed Always Win</p>
-                            </td>
-                            <td class="py-4 px-6">
-                              <span class="inline-flex rounded-full bg-success-50 px-2.5 py-1 text-xs font-medium text-success-600">Published</span>
-                            </td>
-                            <td class="py-4 px-6">
-                              <p class="text-sm text-gray-600">Aug 21, 2026</p>
-                            </td>
-                            <td class="py-4 px-6">
-                              <p class="text-sm text-gray-500">5 days ago</p>
-                            </td>
-                          </tr>
-                          <tr class="hover:bg-gray-50">
-                            <td class="py-4 px-6">
-                              <p class="font-medium text-black">Designing for Growth</p>
-                            </td>
-                            <td class="py-4 px-6">
-                              <span class="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">Draft</span>
-                            </td>
-                            <td class="py-4 px-6">
-                              <p class="text-sm text-gray-600">-</p>
-                            </td>
-                            <td class="py-4 px-6">
-                              <p class="text-sm text-gray-500">Aug 19, 2026</p>
-                            </td>
-                          </tr>
-                        </tbody>
+  <template x-for="article in recentArticles" :key="article.id">
+    <tr class="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50">
+      <td class="py-4 px-6">
+        <p class="font-medium text-black dark:text-white" x-text="article.title"></p>
+      </td>
+      <td class="py-4 px-6">
+        <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium"
+              :class="article.status === 'published' ? 'bg-success-50 dark:bg-success-500/15 text-success-600 dark:text-success-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'"
+              x-text="formatStatus(article.status)"></span>
+      </td>
+      <td class="py-4 px-6">
+        <p class="text-sm text-gray-600 dark:text-gray-300" x-text="formatDate(article.publishedAt)"></p>
+      </td>
+      <td class="py-4 px-6">
+        <p class="text-sm text-gray-500 dark:text-gray-400" x-text="formatDate(article.updatedAt)"></p>
+      </td>
+    </tr>
+  </template>
+</tbody>
                       </table>
                     </div>
                   </div>
 
                   <!-- Recent Case Studies -->
-                  <div class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm">
-                    <div class="border-b border-gray-100 px-6 py-5 flex items-center justify-between">
-                      <h3 class="text-lg font-bold text-black">Recent Case Studies</h3>
+                  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-theme-sm">
+                    <div class="border-b border-gray-100 dark:border-gray-800 px-6 py-5 flex items-center justify-between">
+                      <h3 class="text-lg font-bold text-black dark:text-white">Recent Case Studies</h3>
                       <a href="case-studies.html" class="text-sm font-medium text-brand-500 hover:text-brand-600">View All</a>
                     </div>
                     
                     <div class="flex flex-col">
-                      <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4 hover:bg-gray-50">
-                        <div>
-                          <h4 class="font-medium text-black">Bangjeje Studio V2</h4>
-                          <p class="text-sm text-gray-500 mt-1">E-Commerce / Redesign</p>
-                        </div>
-                        <div class="text-right">
-                          <span class="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 mb-1">Draft</span>
-                          <p class="text-xs text-gray-500">Updated Yesterday</p>
-                        </div>
-                      </div>
-                      
-                      <div class="flex items-center justify-between px-6 py-4 hover:bg-gray-50">
-                        <div>
-                          <h4 class="font-medium text-black">Global Tech Branding</h4>
-                          <p class="text-sm text-gray-500 mt-1">Corporate / Identity</p>
-                        </div>
-                        <div class="text-right">
-                          <span class="inline-flex rounded-full bg-success-50 px-2.5 py-1 text-xs font-medium text-success-600 mb-1">Published</span>
-                          <p class="text-xs text-gray-500">Updated Jul 15, 2026</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                        <template x-for="caseStudy in recentCaseStudies" :key="caseStudy.id">
+                          <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 px-6 py-4 hover:bg-gray-50">
+                            <div>
+                              <h4 class="font-medium text-black dark:text-white" x-text="caseStudy.title"></h4>
+                              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1" x-text="caseStudy.category"></p>
+                            </div>
+                            <div class="text-right">
+                              <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium mb-1"
+                                    :class="caseStudy.status === 'published' ? 'bg-success-50 dark:bg-success-500/15 text-success-600 dark:text-success-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'"
+                                    x-text="formatStatus(caseStudy.status)"></span>
+                              <p class="text-xs text-gray-500 dark:text-gray-400" x-text="formatDate(caseStudy.updatedAt)"></p>
+                            </div>
+                          </div>
+                        </template>
+                      </div></div>
 
                 </div>
 
                 <!-- Right Column (Recent Activity) -->
                 <div class="xl:col-span-1">
-                  <div class="rounded-2xl border border-gray-200 bg-white shadow-theme-sm h-full">
-                    <div class="border-b border-gray-100 px-6 py-5">
-                      <h3 class="text-lg font-bold text-black">Recent Activity</h3>
+                  <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-theme-sm h-full">
+                    <div class="border-b border-gray-100 dark:border-gray-800 px-6 py-5">
+                      <h3 class="text-lg font-bold text-black dark:text-white">Recent Activity</h3>
                     </div>
                     
                     <div class="p-6">
-                      <div class="relative border-l-2 border-gray-100 ml-3 flex flex-col gap-6">
-                        
-                        <!-- Activity Item 1 -->
-                        <div class="relative pl-6">
-                          <span class="absolute left-[-9px] top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 ring-4 ring-white"></span>
-                          <p class="text-sm text-gray-500 mb-0.5">Article updated</p>
-                          <h4 class="text-sm font-medium text-black">"Why Simplicity and Speed Always Win"</h4>
-                          <p class="text-xs text-gray-400 mt-1.5">2 hours ago</p>
+                      <div class="relative border-l-2 border-gray-100 dark:border-gray-800 ml-3 flex flex-col gap-6">
+                          <template x-for="activity in recentActivities" :key="activity.id">
+                            <div class="relative pl-6">
+                              <span class="absolute left-[-9px] top-1 flex h-4 w-4 items-center justify-center rounded-full ring-4 ring-white dark:ring-gray-900"
+                                    :class="activity.type.includes('publish') || activity.type.includes('upload') ? 'bg-success-500' : 'bg-brand-500'"></span>
+                              <p class="text-sm text-gray-500 dark:text-gray-400 mb-0.5" x-text="formatStatus(activity.type.replace('_', ' '))"></p>
+                              <h4 class="text-sm font-medium text-black dark:text-white" x-text="activity.message"></h4>
+                              <p class="text-xs text-gray-400 mt-1.5" x-text="formatDate(activity.createdAt)"></p>
+                            </div>
+                          </template>
                         </div>
-
-                        <!-- Activity Item 2 -->
-                        <div class="relative pl-6">
-                          <span class="absolute left-[-9px] top-1 flex h-4 w-4 items-center justify-center rounded-full bg-success-500 ring-4 ring-white"></span>
-                          <p class="text-sm text-gray-500 mb-0.5">Case study created</p>
-                          <h4 class="text-sm font-medium text-black">"Bangjeje Studio V2"</h4>
-                          <p class="text-xs text-gray-400 mt-1.5">Yesterday</p>
-                        </div>
-
-                        <!-- Activity Item 3 -->
-                        <div class="relative pl-6">
-                          <span class="absolute left-[-9px] top-1 flex h-4 w-4 items-center justify-center rounded-full bg-gray-300 ring-4 ring-white"></span>
-                          <p class="text-sm text-gray-500 mb-0.5">Digital asset added</p>
-                          <h4 class="text-sm font-medium text-black">"Website UI Kit"</h4>
-                          <p class="text-xs text-gray-400 mt-1.5">2 days ago</p>
-                        </div>
-                        
                       </div>
                     </div>
                   </div>

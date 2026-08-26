@@ -6,29 +6,115 @@
     <title>Articles | bangjeje.dev CMS</title>
   </head>
   <body
-    x-data="{ page: 'Articles', 'loaded': true, 'darkMode': false, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false, 'pageTitle': 'Articles', 'pageDescription': 'Manage and publish articles for bangjeje.dev.', 'primaryActionText': 'New Article', 'primaryActionUrl': 'article-create.html', 'secondaryActionText': '', 'secondaryActionUrl': '' }"
-    class="bg-gray-50 text-gray-800"
+    x-data="{  page: 'Articles', 'loaded': true, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false, 'pageTitle': 'Articles', 'pageDescription': 'Manage and publish articles for bangjeje.dev.', 'primaryActionText': 'New Article', 'primaryActionUrl': 'article-create.html', 'secondaryActionText': '', 'secondaryActionUrl': '' , 'darkMode': false }"
+    x-init="
+         darkMode = JSON.parse(localStorage.getItem('darkMode'));
+         $watch('darkMode', value => localStorage.setItem('darkMode', JSON.stringify(value)))"
+    :class="{'dark text-gray-400 bg-gray-dark': darkMode === true}"
+    class="bg-gray-50 text-gray-800 dark:text-white/90"
   >
     <include src="./partials/preloader.html"></include>
     <div class="flex h-screen overflow-hidden">
       <include src="./partials/sidebar.html"></include>
       <div class="relative flex flex-col flex-1 overflow-x-hidden overflow-y-auto">
         <include src="./partials/header.html" />
-        <main>
-          <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 lg:p-10">
+                <main x-data="dashboardData()" x-init="init()" class="relative">
+          <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 lg:p-10" x-data="{ searchQuery: '', statusFilter: 'all', deleteModalOpen: false, targetDeleteId: null, showToast: false }">
             <include src="./partials/page-header.html" />
-            <div class="flex flex-col gap-8">
-              <!-- Empty State Shell -->
-              <div class="mt-8 flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 py-12 bg-white">
-                <div class="mb-4 rounded-full bg-gray-100 p-4">
-                  <svg class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
+            
+            <div class="flex flex-col gap-6 mt-8">
+              <!-- Filters -->
+              <div class="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white dark:bg-gray-900 p-4 rounded-xl shadow-theme-sm border border-gray-200 dark:border-gray-800">
+                <div class="w-full sm:w-1/2 relative">
+                  <input type="text" x-model="searchQuery" placeholder="Search articles..." class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-2.5 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" />
                 </div>
-                <h4 class="mb-2 text-lg font-semibold text-black">Component shell ready</h4>
-                <p class="mb-5 text-sm text-gray-500">This page is structurally complete but awaits functional implementation.</p>
+                <div class="w-full sm:w-auto">
+                  <select x-model="statusFilter" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-2.5 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white">
+                    <option value="all">All Statuses</option>
+                    <option value="published">Published</option>
+                    <option value="draft">Draft</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Articles Table -->
+              <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-theme-sm">
+                <div class="max-w-full overflow-x-auto">
+                  <table class="w-full table-auto">
+                    <thead>
+                      <tr class="bg-gray-50 dark:bg-gray-800/50 text-left">
+                        <th class="py-4 px-6 text-sm font-medium text-gray-500 dark:text-gray-400">Title</th>
+                        <th class="py-4 px-6 text-sm font-medium text-gray-500 dark:text-gray-400">Status</th>
+                        <th class="py-4 px-6 text-sm font-medium text-gray-500 dark:text-gray-400">Published</th>
+                        <th class="py-4 px-6 text-sm font-medium text-gray-500 dark:text-gray-400">Updated</th>
+                        <th class="py-4 px-6 text-sm font-medium text-gray-500 dark:text-gray-400 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="article in filteredArticles(searchQuery, statusFilter)" :key="article.id">
+                        <tr class="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                          <td class="py-4 px-6">
+                            <p class="font-medium text-black dark:text-white" x-text="article.title"></p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1" x-text="'/' + article.slug"></p>
+                          </td>
+                          <td class="py-4 px-6">
+                            <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium"
+                                  :class="article.status === 'published' ? 'bg-success-50 dark:bg-success-500/15 text-success-600 dark:text-success-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'"
+                                  x-text="formatStatus(article.status)"></span>
+                          </td>
+                          <td class="py-4 px-6">
+                            <p class="text-sm text-gray-600 dark:text-gray-300" x-text="formatDate(article.publishedAt)"></p>
+                          </td>
+                          <td class="py-4 px-6">
+                            <p class="text-sm text-gray-500 dark:text-gray-400" x-text="formatDate(article.updatedAt)"></p>
+                          </td>
+                          <td class="py-4 px-6 text-right space-x-3">
+                            <a :href="'article-edit.html?id=' + article.id" class="text-brand-500 hover:text-brand-600 text-sm font-medium">Edit</a>
+                            <button @click="targetDeleteId = article.id; deleteModalOpen = true" class="text-error-500 hover:text-error-600 text-sm font-medium">Delete</button>
+                          </td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                  
+                  <!-- Empty State -->
+                  <div x-show="filteredArticles(searchQuery, statusFilter).length === 0" class="p-8 text-center" style="display: none;">
+                    <p class="text-gray-500 dark:text-gray-400">No articles found.</p>
+                  </div>
+                </div>
               </div>
             </div>
+
+            <!-- Delete Modal -->
+            <div x-show="deleteModalOpen" class="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 px-4 py-6" style="display: none;">
+              <div class="w-full max-w-md rounded-2xl bg-white dark:bg-gray-900 px-8 py-8 shadow-theme-lg text-center" @click.outside="deleteModalOpen = false">
+                <div class="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-error-50 dark:bg-error-500/15 text-error-500">
+                  <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </div>
+                <h3 class="mb-3 text-2xl font-bold text-black dark:text-white">Delete Article?</h3>
+                <p class="mb-8 text-base text-gray-500 dark:text-gray-400">Are you sure you want to delete this article? This action cannot be undone.</p>
+                <div class="flex items-center gap-4">
+                  <button @click="deleteModalOpen = false" class="flex w-full items-center justify-center rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-5 py-3 font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">Cancel</button>
+                  <button @click="deleteArticle(targetDeleteId); deleteModalOpen = false; showToast = true; setTimeout(() => showToast = false, 3000)" class="flex w-full items-center justify-center rounded-lg bg-error-500 px-5 py-3 font-medium text-white hover:bg-error-600">Delete</button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Toast -->
+            <div x-show="showToast" x-transition class="fixed bottom-10 right-10 z-[99999] flex w-full max-w-xs items-center gap-4 rounded-xl bg-white dark:bg-gray-900 px-5 py-4 shadow-theme-md border border-gray-100 dark:border-gray-800" style="display: none;">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-success-50 dark:bg-success-500/15 text-success-500">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div>
+                <h4 class="font-medium text-black dark:text-white">Success</h4>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Article deleted successfully.</p>
+              </div>
+            </div>
+
           </div>
         </main>
       </div>
