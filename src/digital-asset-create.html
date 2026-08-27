@@ -3,10 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Upload Digital Asset | bangjeje.dev CMS</title>
+    <title>Create Digital Asset | bangjeje.dev CMS</title>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quill-blot-formatter@1.0.5/dist/quill-blot-formatter.min.js"></script>
   </head>
   <body
-    x-data="{  page: 'Digital Assets', 'loaded': true, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false, 'pageTitle': 'Upload Digital Asset', 'pageDescription': 'Add a new resource to the library.', 'primaryActionText': 'Upload', 'primaryActionUrl': '#', 'secondaryActionText': 'Cancel', 'secondaryActionUrl': 'digital-assets.html' , 'darkMode': false }"
+    x-data="{  page: 'Digital Assets', 'loaded': true, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false, 'pageTitle': 'Create Digital Asset', 'pageDescription': 'Add a new downloadable resource.', 'secondaryActionText': 'Cancel', 'secondaryActionUrl': 'digital-assets.html', 'primaryActionText': 'Save Draft', 'primaryActionUrl': 'javascript:document.dispatchEvent(new CustomEvent(\'save-draft\'))', 'darkMode': false }"
     x-init="
          darkMode = JSON.parse(localStorage.getItem('darkMode'));
          $watch('darkMode', value => localStorage.setItem('darkMode', JSON.stringify(value)))"
@@ -18,21 +21,366 @@
       <include src="./partials/sidebar.html"></include>
       <div class="relative flex flex-col flex-1 overflow-x-hidden overflow-y-auto">
         <include src="./partials/header.html" />
-        <main>
-          <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 lg:p-10">
+        <main x-data="dashboardData()" x-init="init()" class="relative">
+          <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 lg:p-10" 
+               @save-draft.window="save('draft')"
+               x-data="{ 
+                 daData: { 
+                   title: '', slug: '', description: '', category: '', tags: [], 
+                   type: '', pricingModel: 'free', price: 0,
+                   featuredImage: null,
+                   gallery: [null, null, null, null],
+                   resource: { storage: 'local', filename: '', size: 0, mimeType: '', externalUrl: '' },
+                   order: '', status: 'draft'
+                 },
+                 autoSlug: true,
+                 showToast: false,
+                 errors: {},
+                 
+                 tempTag: '',
+                 
+                 initEditors() {
+                   if (typeof Quill !== 'undefined' && typeof QuillBlotFormatter !== 'undefined') {
+                     Quill.register('modules/blotFormatter', QuillBlotFormatter.default);
+                   }
+                   
+                   const config = { theme: 'snow', modules: { blotFormatter: {}, toolbar: [['bold', 'italic', 'underline'], [{ 'header': 2 }, { 'header': 3 }], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['blockquote', 'code-block'], ['link', 'image'], [{ 'align': [] }], ['clean']] } };
+                   const q = new Quill('#editor-description', config);
+                   q.on('text-change', () => {
+                     const html = q.root.innerHTML;
+                     this.daData.description = html === '<p><br></p>' ? '' : html;
+                   });
+                   if (this.daData.description) q.root.innerHTML = this.daData.description;
+                 },
+                 
+                 addTag(arr, tempVar) {
+                   const val = this[tempVar].trim();
+                   if (val && !arr.includes(val)) arr.push(val);
+                   this[tempVar] = '';
+                 },
+                 removeTag(arr, val) {
+                   const idx = arr.indexOf(val);
+                   if(idx > -1) arr.splice(idx, 1);
+                 },
+
+                 handleFeaturedImage(e) {
+                   const file = e.target.files[0];
+                   if (file) {
+                     const r = new FileReader(); r.onload = (ev) => this.daData.featuredImage = ev.target.result; r.readAsDataURL(file);
+                   }
+                 },
+                 
+                 handleGallerySlot(e, index) {
+                   const file = e.target.files[0];
+                   if (file) {
+                     const r = new FileReader();
+                     r.onload = (ev) => {
+                       this.daData.gallery[index] = ev.target.result;
+                     };
+                     r.readAsDataURL(file);
+                   }
+                   e.target.value = '';
+                 },
+                 removeGallerySlot(index) { this.daData.gallery[index] = null; },
+
+                 handleResourceUpload(e) {
+                   const file = e.target.files[0];
+                   if (file) {
+                     // MOCK PROTOTYPE: Do not read/store file binary! Just store metadata.
+                     this.daData.resource.filename = file.name;
+                     this.daData.resource.size = file.size;
+                     this.daData.resource.mimeType = file.type || 'application/octet-stream';
+                   }
+                   e.target.value = '';
+                 },
+                 removeResource() {
+                   this.daData.resource.filename = '';
+                   this.daData.resource.size = 0;
+                   this.daData.resource.mimeType = '';
+                 },
+
+                 formatBytes(bytes, decimals = 2) {
+                   if (!+bytes) return '0 Bytes';
+                   const k = 1024;
+                   const dm = decimals < 0 ? 0 : decimals;
+                   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+                   const i = Math.floor(Math.log(bytes) / Math.log(k));
+                   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+                 },
+
+                 validate() {
+                   this.errors = {};
+                   if (!this.daData.title.trim()) this.errors.title = 'Title is required';
+                   if (!this.daData.slug.trim()) this.errors.slug = 'Slug is required';
+                   if (!this.daData.category) this.errors.category = 'Category is required';
+                   
+                   if (Object.keys(this.errors).length > 0) {
+                     const el = document.getElementById('field-' + Object.keys(this.errors)[0]);
+                     if (el) el.focus();
+                     return false;
+                   }
+                   return true;
+                 },
+                 
+                 save(status) {
+                   if (!this.validate()) return;
+                   this.daData.status = status;
+                   this.createDigitalAsset(this.daData);
+                   this.showToast = true;
+                   setTimeout(() => window.location.href = 'digital-assets.html', 1000);
+                 }
+               }"
+               x-init="
+                 $watch('daData.title', val => {
+                   if (autoSlug) {
+                     daData.slug = val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+                     if (daData.slug) delete errors.slug;
+                   }
+                   if (val) delete errors.title;
+                 });
+                 setTimeout(() => initEditors(), 100);
+               ">
             <include src="./partials/page-header.html" />
-            <div class="flex flex-col gap-8">
-              <!-- Empty State Shell -->
-              <div class="mt-8 flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 dark:border-gray-700 py-12 bg-white dark:bg-gray-900">
-                <div class="mb-4 rounded-full bg-gray-100 dark:bg-gray-800 p-4">
-                  <svg class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
+            
+            <div class="flex flex-col xl:flex-row gap-6 mt-8">
+              
+              <!-- Main Column -->
+              <div class="flex-1 flex flex-col gap-8">
+                
+                <!-- Featured Image -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-4 text-lg font-bold text-black dark:text-white">Featured Image</h3>
+                  <div class="flex flex-col gap-4">
+                    <div x-show="!daData.featuredImage" class="relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-10 text-center hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors" @click="document.getElementById('featured-upload').click()">
+                      <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-400">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                      </div>
+                      <p class="text-sm font-medium text-black dark:text-white">Click to upload image</p>
+                      <p class="text-xs text-gray-500 mt-1">Recommended: 1200 &times; 800 px<br>JPG, PNG, WebP</p>
+                    </div>
+                    <div x-show="daData.featuredImage" class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 group shadow-sm" style="display: none;">
+                      <img :src="daData.featuredImage" class="w-full h-auto aspect-[4/3] object-cover" />
+                      <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                        <button @click="document.getElementById('featured-upload').click()" class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100 transition-colors shadow-sm">Replace Image</button>
+                        <button @click="daData.featuredImage = null; document.getElementById('featured-upload').value = ''" class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600 transition-colors shadow-sm">Remove Image</button>
+                      </div>
+                    </div>
+                    <input id="featured-upload" type="file" accept="image/*" class="hidden" @change="handleFeaturedImage" />
+                  </div>
                 </div>
-                <h4 class="mb-2 text-lg font-semibold text-black dark:text-white">Component shell ready</h4>
-                <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">This page is structurally complete but awaits functional implementation.</p>
+
+                <!-- 1. Basic Info -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Basic Information</h3>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="md:col-span-2">
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Asset Title <span class="text-error-500">*</span></label>
+                      <input id="field-title" type="text" x-model="daData.title" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" :class="{'border-error-500': errors.title}" />
+                      <p x-show="errors.title" x-text="errors.title" class="mt-1 text-sm text-error-500"></p>
+                    </div>
+                    <div class="md:col-span-2">
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Slug <span class="text-error-500">*</span></label>
+                      <input id="field-slug" type="text" x-model="daData.slug" @input="autoSlug = false" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" :class="{'border-error-500': errors.slug}" />
+                      <p x-show="errors.slug" x-text="errors.slug" class="mt-1 text-sm text-error-500"></p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 2. Asset Details & Pricing -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Asset Details & Pricing</h3>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Asset Type</label>
+                      <select x-model="daData.type" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white">
+                        <option value="">Select Type</option>
+                        <option value="figma">Figma Template</option>
+                        <option value="sketch">Sketch Template</option>
+                        <option value="zip">ZIP Archive</option>
+                        <option value="pdf">PDF Document</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Pricing Model</label>
+                      <select x-model="daData.pricingModel" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white">
+                        <option value="free">Free</option>
+                        <option value="paid">Paid</option>
+                      </select>
+                    </div>
+                    
+                    <div x-show="daData.pricingModel === 'paid'" class="md:col-span-2" x-transition>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Price ($)</label>
+                      <input type="number" step="0.01" min="0" x-model.number="daData.price" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" />
+                    </div>
+
+                    <div class="md:col-span-2">
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Tags</label>
+                      <div class="flex flex-wrap gap-2 mb-3" x-show="daData.tags.length > 0">
+                        <template x-for="t in daData.tags" :key="t">
+                          <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-500/10 px-3 py-1 text-sm font-medium text-brand-600 dark:text-brand-500 border border-brand-200 dark:border-brand-500/20">
+                            <span x-text="t"></span>
+                            <button @click="removeTag(daData.tags, t)" class="text-brand-400 hover:text-brand-600"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                          </span>
+                        </template>
+                      </div>
+                      <input type="text" x-model="tempTag" @keydown.enter.prevent="addTag(daData.tags, 'tempTag')" placeholder="Type a tag and press Enter..." class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white text-sm" />
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 3. File / Resource -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Downloadable Resource</h3>
+                  
+                  <div class="flex flex-col gap-5">
+                    <div class="flex gap-6 border-b border-gray-200 dark:border-gray-700 pb-4">
+                      <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" x-model="daData.resource.storage" value="local" class="text-brand-500 focus:ring-brand-500" />
+                        <span class="text-sm font-medium text-gray-800 dark:text-gray-200">Local File Upload</span>
+                      </label>
+                      <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" x-model="daData.resource.storage" value="external" class="text-brand-500 focus:ring-brand-500" />
+                        <span class="text-sm font-medium text-gray-800 dark:text-gray-200">External Link</span>
+                      </label>
+                    </div>
+
+                    <!-- Local File Mode -->
+                    <div x-show="daData.resource.storage === 'local'" x-transition class="flex flex-col gap-4">
+                      <div x-show="!daData.resource.filename" class="relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-10 text-center hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors" @click="document.getElementById('resource-upload').click()">
+                        <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-400">
+                          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                        </div>
+                        <p class="text-sm font-medium text-black dark:text-white">Click to upload resource</p>
+                        <p class="text-xs text-gray-500 mt-1">ZIP, Figma, PDF, Sketch files supported</p>
+                      </div>
+                      
+                      <div x-show="daData.resource.filename" class="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800/50" style="display: none;">
+                        <div class="flex items-center gap-4 overflow-hidden">
+                          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-500">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                          </div>
+                          <div class="truncate">
+                            <p class="truncate text-sm font-medium text-black dark:text-white" x-text="daData.resource.filename"></p>
+                            <p class="text-xs text-gray-500" x-text="formatBytes(daData.resource.size) + ' • ' + (daData.resource.mimeType || 'Unknown format')"></p>
+                          </div>
+                        </div>
+                        <div class="flex gap-2">
+                          <button @click="document.getElementById('resource-upload').click()" class="text-sm font-medium text-brand-500 hover:text-brand-600 transition-colors">Replace</button>
+                          <button @click="removeResource(); document.getElementById('resource-upload').value = ''" class="text-sm font-medium text-error-500 hover:text-error-600 transition-colors">Remove</button>
+                        </div>
+                      </div>
+                      <input id="resource-upload" type="file" class="hidden" @change="handleResourceUpload" />
+                    </div>
+
+                    <!-- External Link Mode -->
+                    <div x-show="daData.resource.storage === 'external'" x-transition style="display: none;">
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">External Download / Purchase URL</label>
+                      <input type="text" x-model="daData.resource.externalUrl" placeholder="https://gumroad.com/..." class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" />
+                      <p class="mt-1 text-xs text-gray-500">Users will be redirected to this link instead of downloading a local file.</p>
+                    </div>
+
+                  </div>
+                </div>
+
+                <!-- 4. Description -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Description</h3>
+                  <div>
+                    <div class="mb-2.5 flex justify-between items-center">
+                      <label class="block font-medium text-black dark:text-white">Rich Text Content</label>
+                      <span class="text-xs text-gray-500 dark:text-gray-400">Recommended image: 1600 &times; 900 px</span>
+                    </div>
+                    <div id="editor-description" class="w-full rounded-b-lg border-x border-b border-gray-200 dark:border-gray-700 text-black dark:text-white h-64"></div>
+                  </div>
+                </div>
+                
+                <!-- 5. Preview Gallery -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Preview Gallery</h3>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <template x-for="(image, index) in daData.gallery" :key="index">
+                      <div class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 aspect-video group shadow-sm flex items-center justify-center">
+                        <div x-show="!image" class="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" @click="$refs['galleryInput' + index].click()">
+                          <svg class="h-6 w-6 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                          <span class="text-sm font-medium text-gray-500 dark:text-gray-400" x-text="'SLOT 0' + (index + 1)"></span>
+                          <span class="text-xs text-gray-400 dark:text-gray-500 mt-1">Recommended: 1600 &times; 900 px</span>
+                        </div>
+                        <div x-show="image" class="absolute inset-0" style="display: none;">
+                          <img :src="image" class="w-full h-full object-cover" />
+                          <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                            <button @click="$refs['galleryInput' + index].click()" class="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-gray-900 hover:bg-gray-100 transition-colors shadow-sm">Replace</button>
+                            <button @click="removeGallerySlot(index)" class="rounded-lg bg-error-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-error-600 transition-colors shadow-sm">Remove</button>
+                          </div>
+                        </div>
+                        <input type="file" accept="image/*" class="hidden" :x-ref="'galleryInput' + index" @change="handleGallerySlot($event, index)" />
+                      </div>
+                    </template>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Sidebar Column -->
+              <div class="w-full xl:w-1/3 flex flex-col gap-6">
+                <!-- Publishing -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Publishing</h3>
+                  <div class="flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Current Status:</span>
+                      <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium"
+                            :class="{
+                              'bg-success-50 text-success-600 dark:bg-success-500/10 dark:text-success-500': daData.status === 'published',
+                              'bg-warning-50 text-warning-600 dark:bg-warning-500/10 dark:text-warning-500': daData.status === 'draft'
+                            }"
+                            x-text="formatStatus(daData.status)">
+                      </span>
+                    </div>
+                    <button @click="save('published')" class="w-full rounded-lg bg-brand-500 p-3 font-medium text-white hover:bg-brand-600 transition-colors shadow-theme-xs">Publish Now</button>
+                  </div>
+                </div>
+
+                <!-- Category -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Category</h3>
+                  <div class="flex flex-col gap-4">
+                    <select id="field-category" x-model="daData.category" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none text-black dark:text-white focus:border-brand-500 dark:focus:border-brand-500 transition-colors" :class="{'border-error-500': errors.category}">
+                      <option value="">Select Category</option>
+                      <option value="UI Kits">UI Kits</option>
+                      <option value="Templates">Templates</option>
+                      <option value="Resources">Resources</option>
+                      <option value="Icons">Icons</option>
+                    </select>
+                    <p x-show="errors.category" x-text="errors.category" class="mt-1 text-sm text-error-500"></p>
+                  </div>
+                </div>
+
+                <!-- Ordering -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-1 text-lg font-bold text-black dark:text-white">Global Order</h3>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Lower numbers appear first. Determines Next/Prev navigation.</p>
+                  <div>
+                    <input type="number" x-model.number="daData.order" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none text-black dark:text-white focus:border-brand-500 dark:focus:border-brand-500 transition-colors" />
+                  </div>
+                </div>
+
+              </div>
+              
+            </div>
+
+            <!-- Toast -->
+            <div x-show="showToast" x-transition class="fixed bottom-10 right-10 z-[99999] flex w-full max-w-xs items-center gap-4 rounded-xl bg-white dark:bg-gray-900 px-5 py-4 shadow-theme-md border border-gray-100 dark:border-gray-800" style="display: none;">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-success-50 dark:bg-success-500/15 text-success-500">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              </div>
+              <div>
+                <h4 class="text-sm font-semibold text-black dark:text-white">Success!</h4>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Digital Asset has been saved.</p>
               </div>
             </div>
+
           </div>
         </main>
       </div>

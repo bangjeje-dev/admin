@@ -299,6 +299,74 @@ export default function dashboardData() {
       return true;
     },
 
+    // Digital Assets CRUD
+    createDigitalAsset(daData) {
+      const now = new Date().toISOString();
+      // Default order to length + 1 if not provided
+      const order = daData.order || (this.digitalAssets.length + 1);
+      
+      const newDA = {
+        ...daData,
+        id: this.generateId('da'),
+        order: order,
+        createdAt: now,
+        updatedAt: now,
+        publishedAt: daData.status === 'published' ? now : null
+      };
+      
+      this.digitalAssets.push(newDA);
+      this.logActivity(
+        daData.status === 'published' ? 'asset_published' : 'asset_created',
+        (daData.status === 'published' ? 'Published' : 'Drafted') + ' digital asset "' + newDA.title + '"',
+        'digitalAsset',
+        newDA.id
+      );
+      this.saveToStorage();
+      return newDA.id;
+    },
+
+    updateDigitalAsset(id, daData) {
+      const index = this.digitalAssets.findIndex(a => a.id === id);
+      if (index === -1) return null;
+
+      const now = new Date().toISOString();
+      const oldDA = this.digitalAssets[index];
+      
+      let publishedAt = oldDA.publishedAt;
+      let activityType = 'asset_updated';
+      let activityMessage = 'Updated digital asset "' + daData.title + '"';
+
+      if (oldDA.status === 'draft' && daData.status === 'published') {
+        publishedAt = oldDA.publishedAt || now;
+        activityType = 'asset_published';
+        activityMessage = 'Published digital asset "' + daData.title + '"';
+      } else if (oldDA.status === 'published' && daData.status === 'draft') {
+        activityType = 'asset_updated';
+        activityMessage = 'Moved digital asset "' + daData.title + '" to drafts';
+      }
+
+      this.digitalAssets[index] = {
+        ...oldDA,
+        ...daData,
+        updatedAt: now,
+        publishedAt
+      };
+
+      this.logActivity(activityType, activityMessage, 'digitalAsset', id);
+      this.saveToStorage();
+      return id;
+    },
+
+    deleteDigitalAsset(id) {
+      const da = this.digitalAssets.find(a => a.id === id);
+      if (!da) return false;
+
+      this.digitalAssets = this.digitalAssets.filter(a => a.id !== id);
+      this.logActivity('asset_deleted', 'Deleted digital asset "' + (da.title || da.name) + '"', 'digitalAsset', id);
+      this.saveToStorage();
+      return true;
+    },
+
     // Format Date helper
     formatDate(dateString) {
       if (!dateString) return '-';
@@ -397,6 +465,213 @@ export default function dashboardData() {
         }
         return new Date(b.updatedAt) - new Date(a.updatedAt);
       });
+    },
+
+    filteredDigitalAssets(searchQuery = '', statusFilter = 'all', categoryFilter = 'all', typeFilter = 'all', pricingFilter = 'all') {
+      let filtered = this.digitalAssets;
+      
+      if (searchQuery) {
+        const lowerSearch = searchQuery.toLowerCase();
+        filtered = filtered.filter(a => 
+          (a.title && a.title.toLowerCase().includes(lowerSearch)) || 
+          (a.name && a.name.toLowerCase().includes(lowerSearch)) ||
+          (a.description && a.description.toLowerCase().includes(lowerSearch))
+        );
+      }
+
+      if (statusFilter !== 'all') {
+        filtered = filtered.filter(a => a.status === statusFilter);
+      }
+      
+      if (categoryFilter !== 'all') {
+        filtered = filtered.filter(a => a.category === categoryFilter);
+      }
+
+      if (typeFilter !== 'all') {
+        filtered = filtered.filter(a => (a.type && a.type.toLowerCase() === typeFilter.toLowerCase()));
+      }
+
+      if (pricingFilter !== 'all') {
+        filtered = filtered.filter(a => a.pricingModel === pricingFilter);
+      }
+
+      // Sort by order ASC, then updatedAt DESC
+      return filtered.sort((a, b) => {
+        if ((a.order || 0) !== (b.order || 0)) {
+           return (a.order || 0) - (b.order || 0);
+        }
+        return new Date(b.updatedAt) - new Date(a.updatedAt);
+      });
+    }
+  };
+}
+
+export function settingsData() {
+  const SETTINGS_KEY = 'bangjeje_cms_settings';
+  const DASHBOARD_KEY = 'bangjeje_cms_data'; // for import/export
+
+  return {
+    settings: {
+      general: {
+        siteName: "BANGJEJE.DEV",
+        siteUrl: "https://bangjeje.dev",
+        siteDescription: "",
+        logo: null,
+        favicon: null,
+        adminEmail: ""
+      },
+      seo: {
+        metaTitle: "",
+        metaDescription: "",
+        ogImage: null,
+        searchConsoleVerification: ""
+      },
+      social: {
+        instagram: "",
+        linkedin: "",
+        facebook: "",
+        twitter: "",
+        github: "",
+        behance: "",
+        dribbble: ""
+      },
+      contact: {
+        email: "",
+        whatsapp: "",
+        location: ""
+      },
+      navigation: [
+        { id: "nav-home", label: "Home", url: "/", active: true, order: 1 },
+        { id: "nav-services", label: "Services", url: "/services.html", active: true, order: 2 },
+        { id: "nav-case-studies", label: "Case Studies", url: "/case-studies.html", active: true, order: 3 },
+        { id: "nav-articles", label: "Articles", url: "/articles.html", active: true, order: 4 },
+        { id: "nav-digital-assets", label: "Digital Assets", url: "/digital-assets.html", active: true, order: 5 },
+        { id: "nav-about", label: "About", url: "/about.html", active: true, order: 6 },
+        { id: "nav-contact", label: "Contact", url: "/contact.html", active: true, order: 7 }
+      ],
+      storage: {
+        provider: "cloudflare-r2",
+        bucket: "my-asset",
+        publicAssetUrl: "",
+        status: "not-configured"
+      }
+    },
+    
+    activeTab: 'general',
+    showToast: false,
+    toastMessage: '',
+
+    init() {
+      const stored = localStorage.getItem(SETTINGS_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Deep merge to preserve structure and new defaults
+        this.settings = { ...this.settings, ...parsed };
+      } else {
+        this.saveToStorage();
+      }
+    },
+
+    saveToStorage() {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
+    },
+
+    saveSettings() {
+      this.saveToStorage();
+      this.showToastMessage('Settings saved successfully!');
+    },
+
+    showToastMessage(msg) {
+      this.toastMessage = msg;
+      this.showToast = true;
+      setTimeout(() => this.showToast = false, 3000);
+    },
+
+    handleImageUpload(e, category, field) {
+      const file = e.target.files[0];
+      if (file) {
+        const r = new FileReader();
+        r.onload = (ev) => {
+          this.settings[category][field] = ev.target.result;
+        };
+        r.readAsDataURL(file);
+      }
+      e.target.value = '';
+    },
+
+    removeImage(category, field) {
+      this.settings[category][field] = null;
+    },
+
+    // Navigation CRUD
+    addNavItem() {
+      const newOrder = this.settings.navigation.length > 0 
+        ? Math.max(...this.settings.navigation.map(n => n.order)) + 1 
+        : 1;
+      this.settings.navigation.push({
+        id: 'nav-' + Date.now(),
+        label: 'New Item',
+        url: '#',
+        active: true,
+        order: newOrder
+      });
+    },
+
+    removeNavItem(id) {
+      this.settings.navigation = this.settings.navigation.filter(n => n.id !== id);
+    },
+
+    // System Data Handling
+    exportData() {
+      const settingsData = localStorage.getItem(SETTINGS_KEY);
+      const dashboardData = localStorage.getItem(DASHBOARD_KEY);
+      
+      const exportObj = {
+        settings: settingsData ? JSON.parse(settingsData) : this.settings,
+        dashboard: dashboardData ? JSON.parse(dashboardData) : {}
+      };
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "bangjeje_cms_export.json");
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    },
+
+    importData(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const imported = JSON.parse(event.target.result);
+          if (imported.settings) {
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(imported.settings));
+            this.settings = imported.settings;
+          }
+          if (imported.dashboard) {
+            localStorage.setItem(DASHBOARD_KEY, JSON.stringify(imported.dashboard));
+          }
+          this.showToastMessage('Data imported successfully! Reloading...');
+          setTimeout(() => window.location.reload(), 1500);
+        } catch (err) {
+          alert("Invalid JSON file.");
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    },
+
+    resetData() {
+      if (confirm('Are you sure you want to completely reset all CMS data to defaults? This cannot be undone.')) {
+        localStorage.removeItem(SETTINGS_KEY);
+        localStorage.removeItem(DASHBOARD_KEY);
+        this.showToastMessage('Data reset successfully! Reloading...');
+        setTimeout(() => window.location.reload(), 1500);
+      }
     }
   };
 }

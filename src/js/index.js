@@ -14,10 +14,11 @@ import chart03 from "./components/charts/chart-03";
 import map01 from "./components/map-01";
 import "./components/calendar-init.js";
 import "./components/image-resize";
-import dashboardData from "./store.js";
+import dashboardData, { settingsData } from "./store.js";
 
 Alpine.plugin(persist);
 Alpine.data('dashboardData', dashboardData);
+Alpine.data('settingsData', settingsData);
 window.Alpine = Alpine;
 Alpine.start();
 

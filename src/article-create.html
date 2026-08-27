@@ -121,6 +121,36 @@
               
               <!-- Main Form Column -->
               <div class="flex-1 flex flex-col gap-6">
+                <!-- Featured Image -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-theme-sm p-6">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Featured Image</h3>
+                  
+                  <div class="flex flex-col gap-4">
+                    <!-- Upload Box (Empty) -->
+                    <div x-show="!articleData.featuredImage" class="relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-10 text-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer" @click="document.getElementById('image-upload').click()">
+                      <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white dark:bg-gray-900 shadow-theme-sm">
+                        <svg class="h-6 w-6 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <p class="text-sm font-medium text-black dark:text-white">Click to upload image</p>
+                      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Recommended: 1200 &times; 800 px<br>JPG, PNG, WebP</p>
+                    </div>
+                    
+                    <!-- Preview Box -->
+                    <div x-show="articleData.featuredImage" class="relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 group" style="display: none;">
+                      <img :src="articleData.featuredImage" alt="Featured Image Preview" class="w-full h-auto object-cover max-h-80" />
+                      <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                        <button @click="document.getElementById('image-upload').click()" class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50">Replace</button>
+                        <button @click="removeImage()" class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600">Remove</button>
+                      </div>
+                    </div>
+                    
+                    <input id="image-upload" type="file" accept="image/jpeg, image/png, image/webp" class="hidden" @change="handleImageUpload" />
+                  </div>
+                </div>
+
+
                 <!-- General Info -->
                 <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-theme-sm p-6">
                   <h3 class="mb-5 text-lg font-bold text-black dark:text-white">General Information</h3>
@@ -148,42 +178,16 @@
 
                 <!-- Editor -->
                 <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-theme-sm p-6" id="field-content">
-                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Content <span class="text-error-500">*</span></h3>
+                  <div class="mb-5 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-black dark:text-white">Content <span class="text-error-500">*</span></h3>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Recommended image: 1600 &times; 900 px</span>
+                  </div>
                   <div>
                     <div id="editor-container" class="w-full rounded-b-lg border-x border-b border-gray-200 dark:border-gray-700 bg-transparent text-black dark:text-white" style="height: 400px;" :class="{'border-error-500': errors.content}"></div>
                     <p x-show="errors.content" x-text="errors.content" class="mt-1 text-sm text-error-500"></p>
                   </div>
                 </div>
                 
-                <!-- Featured Image -->
-                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-theme-sm p-6">
-                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Featured Image</h3>
-                  
-                  <div class="flex flex-col gap-4">
-                    <!-- Upload Box (Empty) -->
-                    <div x-show="!articleData.featuredImage" class="relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-10 text-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer" @click="document.getElementById('image-upload').click()">
-                      <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white dark:bg-gray-900 shadow-theme-sm">
-                        <svg class="h-6 w-6 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <p class="text-sm font-medium text-black dark:text-white">Click to upload image</p>
-                      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">JPG, PNG, WebP allowed</p>
-                    </div>
-                    
-                    <!-- Preview Box -->
-                    <div x-show="articleData.featuredImage" class="relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 group" style="display: none;">
-                      <img :src="articleData.featuredImage" alt="Featured Image Preview" class="w-full h-auto object-cover max-h-80" />
-                      <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                        <button @click="document.getElementById('image-upload').click()" class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50">Replace</button>
-                        <button @click="removeImage()" class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600">Remove</button>
-                      </div>
-                    </div>
-                    
-                    <input id="image-upload" type="file" accept="image/jpeg, image/png, image/webp" class="hidden" @change="handleImageUpload" />
-                  </div>
-                </div>
-
               </div>
 
               <!-- Sidebar Column -->

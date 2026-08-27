@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/quill-blot-formatter@1.0.5/dist/quill-blot-formatter.min.js"></script>
   </head>
   <body
-    x-data="{  page: 'Case Studies', 'loaded': true, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false, 'pageTitle': 'Edit Case Study', 'pageDescription': 'Modify existing case study.', 'secondaryActionText': 'Cancel', 'secondaryActionUrl': 'case-studies.html' , 'darkMode': false }"
+    x-data="{  page: 'Case Studies', 'loaded': true, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false, 'pageTitle': 'Edit Case Study', 'pageDescription': 'Modify existing case study.', 'secondaryActionText': 'Cancel', 'secondaryActionUrl': 'case-studies.html', 'primaryActionText': 'Save Draft', 'primaryActionUrl': 'javascript:document.dispatchEvent(new CustomEvent(\'save-draft\'))', 'darkMode': false }"
     x-init="
          darkMode = JSON.parse(localStorage.getItem('darkMode'));
          $watch('darkMode', value => localStorage.setItem('darkMode', JSON.stringify(value)))"
@@ -23,6 +23,7 @@
         <include src="./partials/header.html" />
                         <main x-data="dashboardData()"  class="relative">
           <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 lg:p-10" 
+               @save-draft.window="save('draft')"
                x-data="{ 
                  csData: { 
                    id: "",
@@ -165,6 +166,28 @@
               <!-- Main Column -->
               <div class="flex-1 flex flex-col gap-8">
                 
+                <!-- Featured Image -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-4 text-lg font-bold text-black dark:text-white">Featured Image</h3>
+                  <div class="flex flex-col gap-4">
+                    <div x-show="!csData.featuredImage" class="relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-10 text-center hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors" @click="document.getElementById('featured-upload').click()">
+                      <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-400">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                      </div>
+                      <p class="text-sm font-medium text-black dark:text-white">Click to upload image</p>
+                      <p class="text-xs text-gray-500 mt-1">Recommended: 1200 &times; 800 px<br>JPG, PNG, WebP</p>
+                    </div>
+                    <div x-show="csData.featuredImage" class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 group shadow-sm" style="display: none;">
+                      <img :src="csData.featuredImage" class="w-full h-auto aspect-[4/3] object-cover" />
+                      <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                        <button @click="document.getElementById('featured-upload').click()" class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100 transition-colors shadow-sm">Replace Image</button>
+                        <button @click="csData.featuredImage = null; document.getElementById('featured-upload').value = ''" class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600 transition-colors shadow-sm">Remove Image</button>
+                      </div>
+                    </div>
+                    <input id="featured-upload" type="file" accept="image/*" class="hidden" @change="handleFeaturedImage" />
+                  </div>
+                </div>
+
                 <!-- 1. Basic Info -->
                 <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
                   <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Basic Information</h3>
@@ -207,7 +230,10 @@
                   <h3 class="mb-5 text-lg font-bold text-black dark:text-white">01. Project Overview</h3>
                   <div class="flex flex-col gap-5">
                     <div>
-                      <label class="mb-2.5 block font-medium text-black dark:text-white">Rich Text Content</label>
+                      <div class="mb-2.5 flex justify-between items-center">
+                        <label class="block font-medium text-black dark:text-white">Rich Text Content</label>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">Recommended image: 1600 &times; 900 px</span>
+                      </div>
                       <div id="editor-overview" class="w-full rounded-b-lg border-x border-b border-gray-200 dark:border-gray-700 text-black dark:text-white h-48"></div>
                     </div>
                     <div>
@@ -230,7 +256,10 @@
                   <h3 class="mb-5 text-lg font-bold text-black dark:text-white">02. The Challenge</h3>
                   <div class="flex flex-col gap-5">
                     <div>
-                      <label class="mb-2.5 block font-medium text-black dark:text-white">Rich Text Content</label>
+                      <div class="mb-2.5 flex justify-between items-center">
+                        <label class="block font-medium text-black dark:text-white">Rich Text Content</label>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">Recommended image: 1600 &times; 900 px</span>
+                      </div>
                       <div id="editor-challenge" class="w-full rounded-b-lg border-x border-b border-gray-200 dark:border-gray-700 text-black dark:text-white h-48"></div>
                     </div>
                     <div>
@@ -341,7 +370,10 @@
                   <h3 class="mb-5 text-lg font-bold text-black dark:text-white">05. Deliverables</h3>
                   <div class="flex flex-col gap-7">
                     <div>
-                      <label class="mb-2.5 block font-medium text-black dark:text-white">Rich Text Description</label>
+                      <div class="mb-2.5 flex justify-between items-center">
+                        <label class="block font-medium text-black dark:text-white">Rich Text Description</label>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">Recommended image: 1600 &times; 900 px</span>
+                      </div>
                       <div id="editor-deliverables" class="w-full rounded-b-lg border-x border-b border-gray-200 dark:border-gray-700 text-black dark:text-white h-48"></div>
                     </div>
                     
@@ -388,6 +420,7 @@
                               </div>
                               <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" x-text="'SLOT 0' + (idx + 1)"></span>
                               <span class="mt-1 text-xs text-gray-400">Click to upload</span>
+                              <span class="mt-1 text-xs text-gray-400">Recommended: 1600 &times; 900 px</span>
                             </div>
                             
                             <!-- Filled State -->
@@ -414,7 +447,10 @@
                 <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
                   <h3 class="mb-5 text-lg font-bold text-black dark:text-white">07. Reflection</h3>
                   <div>
-                    <label class="mb-2.5 block font-medium text-black dark:text-white">Rich Text Content</label>
+                    <div class="mb-2.5 flex justify-between items-center">
+                        <label class="block font-medium text-black dark:text-white">Rich Text Content</label>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">Recommended image: 1600 &times; 900 px</span>
+                      </div>
                     <div id="editor-reflection" class="w-full rounded-b-lg border-x border-b border-gray-200 dark:border-gray-700 text-black dark:text-white h-48"></div>
                   </div>
                 </div>
@@ -433,8 +469,6 @@
                   </div>
                   <div class="flex flex-col gap-3">
                     <button @click="save('published')" class="flex w-full items-center justify-center rounded-lg bg-brand-500 px-5 py-3 font-medium text-white hover:bg-brand-600 transition-colors shadow-sm" x-text="csData.status === 'published' ? 'Update Case Study' : 'Publish Now'"></button>
-                    <button @click="save('draft')" class="flex w-full items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-5 py-3 font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" x-show="csData.status !== 'draft'">Switch to Draft</button>
-                    <button @click="save('draft')" class="flex w-full items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-5 py-3 font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" x-show="csData.status === 'draft'">Save Draft</button>
                   </div>
                 </div>
                 
@@ -460,28 +494,6 @@
                   <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Lower numbers appear first. Determines Next/Prev navigation.</p>
                   <div>
                     <input type="number" x-model.number="csData.order" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none text-black dark:text-white focus:border-brand-500 dark:focus:border-brand-500 transition-colors" />
-                  </div>
-                </div>
-
-                <!-- Featured Image -->
-                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
-                  <h3 class="mb-4 text-lg font-bold text-black dark:text-white">Featured Image</h3>
-                  <div class="flex flex-col gap-4">
-                    <div x-show="!csData.featuredImage" class="relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-10 text-center hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors" @click="document.getElementById('featured-upload').click()">
-                      <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-400">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                      </div>
-                      <p class="text-sm font-medium text-black dark:text-white">Click to upload image</p>
-                      <p class="text-xs text-gray-500 mt-1">Recommended size: 1200x800px</p>
-                    </div>
-                    <div x-show="csData.featuredImage" class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 group shadow-sm" style="display: none;">
-                      <img :src="csData.featuredImage" class="w-full h-auto aspect-[4/3] object-cover" />
-                      <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
-                        <button @click="document.getElementById('featured-upload').click()" class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100 transition-colors shadow-sm">Replace Image</button>
-                        <button @click="csData.featuredImage = null; document.getElementById('featured-upload').value = ''" class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600 transition-colors shadow-sm">Remove Image</button>
-                      </div>
-                    </div>
-                    <input id="featured-upload" type="file" accept="image/*" class="hidden" @change="handleFeaturedImage" />
                   </div>
                 </div>
 

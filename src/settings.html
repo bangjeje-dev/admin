@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Settings | bangjeje.dev CMS</title>
+  </head>
+  <body
+    x-data="{  page: 'Settings', 'loaded': true, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false, 'pageTitle': 'Settings', 'pageDescription': 'Manage your website and CMS configuration.', 'primaryActionText': 'Save Changes', 'primaryActionUrl': 'javascript:document.dispatchEvent(new CustomEvent(\'save-settings\'))', 'secondaryActionText': '', 'secondaryActionUrl': '', 'darkMode': false }"
+    x-init="
+         darkMode = JSON.parse(localStorage.getItem('darkMode'));
+         $watch('darkMode', value => localStorage.setItem('darkMode', JSON.stringify(value)))"
+    :class="{'dark text-gray-400 bg-gray-dark': darkMode === true}"
+    class="bg-gray-50 text-gray-800 dark:text-white/90"
+  >
+    <include src="./partials/preloader.html"></include>
+    <div class="flex h-screen overflow-hidden">
+      <include src="./partials/sidebar.html"></include>
+      <div class="relative flex flex-col flex-1 overflow-x-hidden overflow-y-auto">
+        <include src="./partials/header.html" />
+        <main x-data="settingsData()" x-init="init()" @save-settings.window="saveSettings()" class="relative">
+          <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 lg:p-10">
+            <include src="./partials/page-header.html" />
+            
+            <div class="mt-8 flex flex-col xl:flex-row gap-6">
+              <!-- Sidebar Navigation -->
+              <div class="w-full xl:w-64 shrink-0">
+                <nav class="flex xl:flex-col gap-2 overflow-x-auto pb-4 xl:pb-0" aria-label="Tabs">
+                  <button @click="activeTab = 'general'" :class="{'bg-white dark:bg-gray-800 shadow-theme-sm text-brand-500': activeTab === 'general', 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800': activeTab !== 'general'}" class="px-4 py-3 text-sm font-medium rounded-xl transition-all whitespace-nowrap text-left">
+                    General
+                  </button>
+                  <button @click="activeTab = 'seo'" :class="{'bg-white dark:bg-gray-800 shadow-theme-sm text-brand-500': activeTab === 'seo', 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800': activeTab !== 'seo'}" class="px-4 py-3 text-sm font-medium rounded-xl transition-all whitespace-nowrap text-left">
+                    SEO
+                  </button>
+                  <button @click="activeTab = 'social'" :class="{'bg-white dark:bg-gray-800 shadow-theme-sm text-brand-500': activeTab === 'social', 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800': activeTab !== 'social'}" class="px-4 py-3 text-sm font-medium rounded-xl transition-all whitespace-nowrap text-left">
+                    Social Links
+                  </button>
+                  <button @click="activeTab = 'contact'" :class="{'bg-white dark:bg-gray-800 shadow-theme-sm text-brand-500': activeTab === 'contact', 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800': activeTab !== 'contact'}" class="px-4 py-3 text-sm font-medium rounded-xl transition-all whitespace-nowrap text-left">
+                    Contact
+                  </button>
+                  <button @click="activeTab = 'navigation'" :class="{'bg-white dark:bg-gray-800 shadow-theme-sm text-brand-500': activeTab === 'navigation', 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800': activeTab !== 'navigation'}" class="px-4 py-3 text-sm font-medium rounded-xl transition-all whitespace-nowrap text-left">
+                    Navigation
+                  </button>
+                  <button @click="activeTab = 'storage'" :class="{'bg-white dark:bg-gray-800 shadow-theme-sm text-brand-500': activeTab === 'storage', 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800': activeTab !== 'storage'}" class="px-4 py-3 text-sm font-medium rounded-xl transition-all whitespace-nowrap text-left">
+                    Storage
+                  </button>
+                  <button @click="activeTab = 'system'" :class="{'bg-white dark:bg-gray-800 shadow-theme-sm text-brand-500': activeTab === 'system', 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800': activeTab !== 'system'}" class="px-4 py-3 text-sm font-medium rounded-xl transition-all whitespace-nowrap text-left">
+                    System
+                  </button>
+                </nav>
+              </div>
+
+              <!-- Main Content -->
+              <div class="flex-1 flex flex-col gap-6">
+
+                <!-- General -->
+                <div x-show="activeTab === 'general'" class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">General Configuration</h3>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Website Name</label>
+                      <input type="text" x-model="settings.general.siteName" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 text-black dark:text-white" />
+                    </div>
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Website URL</label>
+                      <input type="text" x-model="settings.general.siteUrl" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 text-black dark:text-white" />
+                    </div>
+                    <div class="md:col-span-2">
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Site Description</label>
+                      <textarea rows="3" x-model="settings.general.siteDescription" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 text-black dark:text-white"></textarea>
+                    </div>
+                    <div class="md:col-span-2">
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Admin Email</label>
+                      <input type="email" x-model="settings.general.adminEmail" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 text-black dark:text-white" />
+                    </div>
+
+                    <!-- Logo Upload -->
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Logo</label>
+                      <div x-show="!settings.general.logo" class="relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-8 text-center hover:bg-gray-100 cursor-pointer" @click="$refs.logoInput.click()">
+                        <p class="text-sm font-medium text-black dark:text-white">Upload Logo</p>
+                        <p class="text-xs text-gray-500 mt-1">Recommended: 200 &times; 60 px</p>
+                      </div>
+                      <div x-show="settings.general.logo" class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 group h-32 flex items-center justify-center bg-gray-50 dark:bg-gray-800" style="display: none;">
+                        <img :src="settings.general.logo" class="max-h-full max-w-full object-contain p-4" />
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                          <button @click="$refs.logoInput.click()" class="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-gray-900 hover:bg-gray-100">Replace</button>
+                          <button @click="removeImage('general', 'logo')" class="rounded-lg bg-error-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-error-600">Remove</button>
+                        </div>
+                      </div>
+                      <input x-ref="logoInput" type="file" accept="image/*" class="hidden" @change="handleImageUpload($event, 'general', 'logo')" />
+                    </div>
+
+                    <!-- Favicon Upload -->
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Favicon</label>
+                      <div x-show="!settings.general.favicon" class="relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-8 text-center hover:bg-gray-100 cursor-pointer" @click="$refs.faviconInput.click()">
+                        <p class="text-sm font-medium text-black dark:text-white">Upload Favicon</p>
+                        <p class="text-xs text-gray-500 mt-1">Recommended: 64 &times; 64 px (1:1)</p>
+                      </div>
+                      <div x-show="settings.general.favicon" class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 group h-32 flex items-center justify-center bg-gray-50 dark:bg-gray-800" style="display: none;">
+                        <img :src="settings.general.favicon" class="max-h-full max-w-full object-contain p-4" />
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                          <button @click="$refs.faviconInput.click()" class="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-gray-900 hover:bg-gray-100">Replace</button>
+                          <button @click="removeImage('general', 'favicon')" class="rounded-lg bg-error-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-error-600">Remove</button>
+                        </div>
+                      </div>
+                      <input x-ref="faviconInput" type="file" accept="image/*" class="hidden" @change="handleImageUpload($event, 'general', 'favicon')" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- SEO -->
+                <div x-show="activeTab === 'seo'" style="display: none;" class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-1 text-lg font-bold text-black dark:text-white">SEO Defaults</h3>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mb-5">These are GLOBAL defaults for public pages when no specific SEO data is provided.</p>
+                  
+                  <div class="grid grid-cols-1 gap-5">
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Default Meta Title</label>
+                      <input type="text" x-model="settings.seo.metaTitle" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 text-black dark:text-white" />
+                    </div>
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Default Meta Description</label>
+                      <textarea rows="3" x-model="settings.seo.metaDescription" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 text-black dark:text-white"></textarea>
+                    </div>
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Google Search Console Verification Code</label>
+                      <input type="text" x-model="settings.seo.searchConsoleVerification" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 text-black dark:text-white" />
+                    </div>
+                    
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Default OG Image</label>
+                      <div x-show="!settings.seo.ogImage" class="relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-10 text-center hover:bg-gray-100 cursor-pointer" @click="$refs.ogInput.click()">
+                        <p class="text-sm font-medium text-black dark:text-white">Upload OG Image</p>
+                        <p class="text-xs text-gray-500 mt-1">Recommended: 1200 &times; 630 px</p>
+                      </div>
+                      <div x-show="settings.seo.ogImage" class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 group shadow-sm w-full max-w-xl" style="display: none;">
+                        <img :src="settings.seo.ogImage" class="w-full h-auto aspect-[1200/630] object-cover" />
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                          <button @click="$refs.ogInput.click()" class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100">Replace</button>
+                          <button @click="removeImage('seo', 'ogImage')" class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600">Remove</button>
+                        </div>
+                      </div>
+                      <input x-ref="ogInput" type="file" accept="image/*" class="hidden" @change="handleImageUpload($event, 'seo', 'ogImage')" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Social Links -->
+                <div x-show="activeTab === 'social'" style="display: none;" class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Social Links</h3>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <template x-for="social in ['instagram', 'linkedin', 'facebook', 'twitter', 'github', 'behance', 'dribbble']">
+                      <div>
+                        <label class="mb-2.5 block font-medium text-black dark:text-white capitalize" x-text="social"></label>
+                        <input type="text" x-model="settings.social[social]" placeholder="https://..." class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 text-black dark:text-white" />
+                      </div>
+                    </template>
+                  </div>
+                </div>
+
+                <!-- Contact -->
+                <div x-show="activeTab === 'contact'" style="display: none;" class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Contact Information</h3>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Public Email</label>
+                      <input type="email" x-model="settings.contact.email" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 text-black dark:text-white" />
+                    </div>
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">WhatsApp (Link or Number)</label>
+                      <input type="text" x-model="settings.contact.whatsapp" placeholder="https://wa.me/..." class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 text-black dark:text-white" />
+                    </div>
+                    <div class="md:col-span-2">
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Location / Address</label>
+                      <textarea rows="2" x-model="settings.contact.location" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 text-black dark:text-white"></textarea>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Navigation -->
+                <div x-show="activeTab === 'navigation'" style="display: none;" class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <div class="mb-5 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-black dark:text-white">Navigation Menu</h3>
+                    <button @click="addNavItem()" class="rounded-lg bg-brand-50 dark:bg-brand-500/10 px-4 py-2 text-sm font-medium text-brand-600 dark:text-brand-500 hover:bg-brand-100 transition-colors border border-brand-200 dark:border-brand-500/20">Add Item</button>
+                  </div>
+                  
+                  <div class="flex flex-col gap-4">
+                    <template x-for="item in settings.navigation.sort((a,b)=>a.order-b.order)" :key="item.id">
+                      <div class="flex flex-col md:flex-row items-center gap-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-4">
+                        <div class="w-full md:w-16">
+                          <label class="mb-1 block text-xs text-gray-500">Order</label>
+                          <input type="number" x-model.number="item.order" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 outline-none focus:border-brand-500 text-sm" />
+                        </div>
+                        <div class="w-full md:flex-1">
+                          <label class="mb-1 block text-xs text-gray-500">Label</label>
+                          <input type="text" x-model="item.label" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 outline-none focus:border-brand-500 text-sm" />
+                        </div>
+                        <div class="w-full md:flex-1">
+                          <label class="mb-1 block text-xs text-gray-500">URL</label>
+                          <input type="text" x-model="item.url" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 outline-none focus:border-brand-500 text-sm" />
+                        </div>
+                        <div class="w-full md:w-24 flex items-center justify-between md:justify-end gap-4 mt-2 md:mt-0 pt-4 md:pt-0">
+                          <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" x-model="item.active" class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-brand-500"></div>
+                          </label>
+                          <button @click="removeNavItem(item.id)" class="text-gray-400 hover:text-error-500 transition-colors">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+
+                <!-- Storage -->
+                <div x-show="activeTab === 'storage'" style="display: none;" class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Storage Provider</h3>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Provider</label>
+                      <input type="text" x-model="settings.storage.provider" readonly class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-5 py-3 outline-none text-gray-500 dark:text-gray-400 cursor-not-allowed" />
+                    </div>
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Bucket</label>
+                      <input type="text" x-model="settings.storage.bucket" readonly class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-5 py-3 outline-none text-gray-500 dark:text-gray-400 cursor-not-allowed" />
+                    </div>
+                    <div class="md:col-span-2">
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Public Asset URL</label>
+                      <input type="text" x-model="settings.storage.publicAssetUrl" readonly class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-5 py-3 outline-none text-gray-500 dark:text-gray-400 cursor-not-allowed" />
+                    </div>
+                    <div class="md:col-span-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                      <div class="flex items-center gap-3">
+                        <span class="text-sm font-medium text-black dark:text-white">Connection Status:</span>
+                        <span class="inline-flex rounded-full bg-gray-100 dark:bg-gray-800 px-3 py-1 text-xs font-semibold text-gray-600 dark:text-gray-400">
+                          Not Configured
+                        </span>
+                      </div>
+                      <p class="mt-2 text-xs text-gray-500">Cloudflare R2 integration will be implemented in a future phase.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- System -->
+                <div x-show="activeTab === 'system'" style="display: none;" class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">System Data</h3>
+                  
+                  <div class="flex flex-col gap-6">
+                    <div class="flex justify-between items-center pb-4 border-b border-gray-100 dark:border-gray-800">
+                      <div>
+                        <h4 class="font-medium text-black dark:text-white">Export CMS Data</h4>
+                        <p class="text-sm text-gray-500 mt-1">Download a JSON backup of all articles, case studies, digital assets, and settings.</p>
+                      </div>
+                      <button @click="exportData()" class="rounded-lg bg-brand-50 px-4 py-2 text-sm font-medium text-brand-600 hover:bg-brand-100 transition-colors border border-brand-200 whitespace-nowrap">Export JSON</button>
+                    </div>
+                    
+                    <div class="flex justify-between items-center pb-4 border-b border-gray-100 dark:border-gray-800">
+                      <div>
+                        <h4 class="font-medium text-black dark:text-white">Import CMS Data</h4>
+                        <p class="text-sm text-gray-500 mt-1">Restore your CMS from a previous JSON backup file.</p>
+                      </div>
+                      <div>
+                        <input type="file" id="import-upload" accept=".json" class="hidden" @change="importData" />
+                        <button @click="document.getElementById('import-upload').click()" class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors border border-gray-200 whitespace-nowrap">Import JSON</button>
+                      </div>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-2">
+                      <div>
+                        <h4 class="font-medium text-error-600">Reset Demo Data</h4>
+                        <p class="text-sm text-gray-500 mt-1">Completely erase all CMS data and restore to initial empty state.</p>
+                      </div>
+                      <button @click="resetData()" class="rounded-lg bg-error-50 px-4 py-2 text-sm font-medium text-error-600 hover:bg-error-100 transition-colors border border-error-200 whitespace-nowrap">Reset All Data</button>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Toast -->
+            <div x-show="showToast" x-transition class="fixed bottom-10 right-10 z-[99999] flex w-full max-w-sm items-center gap-4 rounded-xl bg-white dark:bg-gray-900 px-5 py-4 shadow-theme-md border border-gray-100 dark:border-gray-800" style="display: none;">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-success-50 dark:bg-success-500/15 text-success-500">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              </div>
+              <div>
+                <h4 class="text-sm font-semibold text-black dark:text-white">Success</h4>
+                <p class="text-xs text-gray-500 dark:text-gray-400" x-text="toastMessage"></p>
+              </div>
+            </div>
+
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>
