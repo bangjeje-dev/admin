@@ -1,24 +1,10 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Case Studies | bangjeje.dev CMS</title>
-  </head>
-  <body
-    x-data="{  page: 'Case Studies', 'loaded': true, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false, 'pageTitle': 'Case Studies', 'pageDescription': 'Manage your project case studies.', 'primaryActionText': 'New Case Study', 'primaryActionUrl': 'case-study-create.html', 'secondaryActionText': '', 'secondaryActionUrl': '' , 'darkMode': false }"
-    x-init="
-         darkMode = JSON.parse(localStorage.getItem('darkMode'));
-         $watch('darkMode', value => localStorage.setItem('darkMode', JSON.stringify(value)))"
-    :class="{'dark text-gray-400 bg-gray-dark': darkMode === true}"
-    class="bg-gray-50 text-gray-800 dark:text-white/90"
-  >
-    <include src="./partials/preloader.html"></include>
-    <div class="flex h-screen overflow-hidden">
-      <include src="./partials/sidebar.html"></include>
-      <div class="relative flex flex-col flex-1 overflow-x-hidden overflow-y-auto">
-        <include src="./partials/header.html" />
-                <main x-data="dashboardData()" x-init="init()" class="relative">
+import re
+
+filepath = "d:/BANGJEJE.DEV/CMS/admin/src/case-studies.html"
+with open(filepath, "r", encoding="utf-8") as f:
+    content = f.read()
+
+new_main = """        <main x-data="dashboardData()" x-init="init()" class="relative">
           <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 lg:p-10" x-data="{ searchQuery: '', statusFilter: 'all', categoryFilter: 'all', showDeleteModal: false, csToDelete: null }">
             <include src="./partials/page-header.html" />
             
@@ -143,8 +129,10 @@
             </div>
 
           </div>
-        </main>
-      </div>
-    </div>
-  </body>
-</html>
+        </main>"""
+
+content = re.sub(r'<main>.*?</main>', new_main, content, flags=re.DOTALL)
+
+with open(filepath, "w", encoding="utf-8") as f:
+    f.write(content)
+print("Updated case-studies.html")

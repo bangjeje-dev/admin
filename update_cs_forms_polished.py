@@ -1,61 +1,77 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Create Case Study | bangjeje.dev CMS</title>
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/quill-blot-formatter@1.0.5/dist/quill-blot-formatter.min.js"></script>
-  </head>
-  <body
-    x-data="{  page: 'Case Studies', 'loaded': true, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false, 'pageTitle': 'Create Case Study', 'pageDescription': 'Add a new project showcase.', 'primaryActionText': 'Save Draft', 'primaryActionUrl': '#', 'secondaryActionText': 'Cancel', 'secondaryActionUrl': 'case-studies.html' , 'darkMode': false }"
-    x-init="
-         darkMode = JSON.parse(localStorage.getItem('darkMode'));
-         $watch('darkMode', value => localStorage.setItem('darkMode', JSON.stringify(value)))"
-    :class="{'dark text-gray-400 bg-gray-dark': darkMode === true}"
-    class="bg-gray-50 text-gray-800 dark:text-white/90"
-  >
-    <include src="./partials/preloader.html"></include>
-    <div class="flex h-screen overflow-hidden">
-      <include src="./partials/sidebar.html"></include>
-      <div class="relative flex flex-col flex-1 overflow-x-hidden overflow-y-auto">
-        <include src="./partials/header.html" />
-                        <main x-data="dashboardData()" x-init="init()" class="relative">
+import re
+
+def generate_html(mode="create"):
+    is_edit = mode == "edit"
+    
+    init_logic = ""
+    if is_edit:
+        init_logic = """
+                 init();
+                 const urlParams = new URLSearchParams(window.location.search);
+                 const csId = urlParams.get('id');
+                 const found = caseStudies.find(a => a.id === csId);
+                 if (found) {
+                   csData = JSON.parse(JSON.stringify({
+                     ...found,
+                     overview: found.overview || { content: '', responsibilities: [] },
+                     challenge: found.challenge || { content: '', considerations: [], points: [] },
+                     objectives: found.objectives || [],
+                     process: found.process || [],
+                     deliverables: found.deliverables || { description: '', artifacts: [], tools: [], gallery: [null, null, null, null] },
+                     reflection: found.reflection || { content: '' },
+                     featuredImage: found.featuredImage || null
+                   }));
+                   // Ensure gallery is exactly 4 slots
+                   if (!csData.deliverables.gallery) csData.deliverables.gallery = [null, null, null, null];
+                   while (csData.deliverables.gallery.length < 4) csData.deliverables.gallery.push(null);
+                   csData.deliverables.gallery = csData.deliverables.gallery.slice(0, 4);
+                 } else {
+                   window.location.href = 'case-studies.html';
+                 }
+                 setTimeout(() => initEditors(), 100);
+        """
+    else:
+        init_logic = "setTimeout(() => initEditors(), 100);"
+
+    save_call = "this.updateCaseStudy(this.csData.id, this.csData);" if is_edit else "this.createCaseStudy(this.csData);"
+    toast_msg = "Case Study updated successfully." if is_edit else "Case Study created successfully."
+
+    # HTML string
+    html = f"""        <main x-data="dashboardData()" {'x-init="init()"' if not is_edit else ''} class="relative">
           <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 lg:p-10" 
-               x-data="{ 
-                 csData: { 
-                   
+               x-data="{{ 
+                 csData: {{ 
+                   {'id: "",' if is_edit else ''}
                    title: '', slug: '', description: '', category: '', industry: '', role: '', platform: '', timeline: '', order: '', status: 'draft', featuredImage: null,
-                   overview: { content: '', responsibilities: [] },
-                   challenge: { content: '', considerations: [], points: [] },
+                   overview: {{ content: '', responsibilities: [] }},
+                   challenge: {{ content: '', considerations: [], points: [] }},
                    objectives: [],
                    process: [],
-                   deliverables: { description: '', artifacts: [], tools: [], gallery: [null, null, null, null] },
-                   reflection: { content: '' }
-                 },
-                 autoSlug: true,
+                   deliverables: {{ description: '', artifacts: [], tools: [], gallery: [null, null, null, null] }},
+                   reflection: {{ content: '' }}
+                 }},
+                 autoSlug: { 'false' if is_edit else 'true' },
                  showToast: false,
-                 errors: {},
+                 errors: {{}},
                  
                  // Temp inputs for tags
                  tempResp: '', tempCons: '', tempChalPoint: '', tempArtifact: '', tempTool: '',
                  
-                 initEditors() {
-                   if (typeof Quill !== 'undefined' && typeof QuillBlotFormatter !== 'undefined') {
+                 initEditors() {{
+                   if (typeof Quill !== 'undefined' && typeof QuillBlotFormatter !== 'undefined') {{
                      Quill.register('modules/blotFormatter', QuillBlotFormatter.default);
-                   }
+                   }}
                    
-                   ['overview', 'challenge', 'deliverables', 'reflection'].forEach(key => {
-                     const config = { theme: 'snow', modules: { blotFormatter: {}, toolbar: [['bold', 'italic', 'underline'], [{ 'header': 2 }, { 'header': 3 }], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['blockquote', 'code-block'], ['link', 'image'], [{ 'align': [] }], ['clean']] } };
+                   ['overview', 'challenge', 'deliverables', 'reflection'].forEach(key => {{
+                     const config = {{ theme: 'snow', modules: {{ blotFormatter: {{}}, toolbar: [['bold', 'italic', 'underline'], [{{ 'header': 2 }}, {{ 'header': 3 }}], [{{ 'list': 'ordered'}}, {{ 'list': 'bullet' }}], ['blockquote', 'code-block'], ['link', 'image'], [{{ 'align': [] }}], ['clean']] }} }};
                      const q = new Quill('#editor-' + key, config);
-                     q.on('text-change', () => {
+                     q.on('text-change', () => {{
                        const html = q.root.innerHTML;
                        if (key === 'overview') this.csData.overview.content = html === '<p><br></p>' ? '' : html;
                        if (key === 'challenge') this.csData.challenge.content = html === '<p><br></p>' ? '' : html;
                        if (key === 'deliverables') this.csData.deliverables.description = html === '<p><br></p>' ? '' : html;
                        if (key === 'reflection') this.csData.reflection.content = html === '<p><br></p>' ? '' : html;
-                     });
+                     }});
                      // hydrate
                      let c = '';
                      if (key === 'overview') c = this.csData.overview.content;
@@ -63,76 +79,76 @@
                      if (key === 'deliverables') c = this.csData.deliverables.description;
                      if (key === 'reflection') c = this.csData.reflection.content;
                      if (c) q.root.innerHTML = c;
-                   });
-                 },
+                   }});
+                 }},
                  
-                 addTag(arr, tempVar) {
+                 addTag(arr, tempVar) {{
                    const val = this[tempVar].trim();
                    if (val && !arr.includes(val)) arr.push(val);
                    this[tempVar] = '';
-                 },
-                 removeTag(arr, val) {
+                 }},
+                 removeTag(arr, val) {{
                    const idx = arr.indexOf(val);
                    if(idx > -1) arr.splice(idx, 1);
-                 },
+                 }},
                  
-                 addObjective() { this.csData.objectives.push({ id: 'obj-'+Date.now(), title: '', description: '', icon: '' }); },
-                 removeObjective(idx) { this.csData.objectives.splice(idx, 1); },
+                 addObjective() {{ this.csData.objectives.push({{ id: 'obj-'+Date.now(), title: '', description: '', icon: '' }}); }},
+                 removeObjective(idx) {{ this.csData.objectives.splice(idx, 1); }},
                  
-                 addProcess() { this.csData.process.push({ id: 'proc-'+Date.now(), phase: '', title: '', description: '' }); },
-                 removeProcess(idx) { this.csData.process.splice(idx, 1); },
+                 addProcess() {{ this.csData.process.push({{ id: 'proc-'+Date.now(), phase: '', title: '', description: '' }}); }},
+                 removeProcess(idx) {{ this.csData.process.splice(idx, 1); }},
 
-                 handleFeaturedImage(e) {
+                 handleFeaturedImage(e) {{
                    const file = e.target.files[0];
-                   if (file) {
+                   if (file) {{
                      const r = new FileReader(); r.onload = (ev) => this.csData.featuredImage = ev.target.result; r.readAsDataURL(file);
-                   }
-                 },
+                   }}
+                 }},
                  
-                 handleGallerySlot(e, index) {
+                 handleGallerySlot(e, index) {{
                    const file = e.target.files[0];
-                   if (file) {
+                   if (file) {{
                      const r = new FileReader();
-                     r.onload = (ev) => {
+                     r.onload = (ev) => {{
                        this.csData.deliverables.gallery[index] = ev.target.result;
-                     };
+                     }};
                      r.readAsDataURL(file);
-                   }
+                   }}
                    e.target.value = '';
-                 },
-                 removeGallerySlot(index) { this.csData.deliverables.gallery[index] = null; },
+                 }},
+                 removeGallerySlot(index) {{ this.csData.deliverables.gallery[index] = null; }},
 
-                 validate() {
-                   this.errors = {};
+                 validate() {{
+                   this.errors = {{}};
                    if (!this.csData.title.trim()) this.errors.title = 'Title is required';
                    if (!this.csData.slug.trim()) this.errors.slug = 'Slug is required';
                    if (!this.csData.category) this.errors.category = 'Category is required';
                    
-                   if (Object.keys(this.errors).length > 0) {
+                   if (Object.keys(this.errors).length > 0) {{
                      const el = document.getElementById('field-' + Object.keys(this.errors)[0]);
                      if (el) el.focus();
                      return false;
-                   }
+                   }}
                    return true;
-                 },
+                 }},
                  
-                 save(status) {
+                 save(status) {{
                    if (!this.validate()) return;
                    this.csData.status = status;
-                   this.createCaseStudy(this.csData);
+                   {save_call}
                    this.showToast = true;
                    setTimeout(() => window.location.href = 'case-studies.html', 1000);
-                 }
-               }"
+                 }}
+               }}"
                x-init="
-                 $watch('csData.title', val => {
-                   if (autoSlug) {
+                 $watch('csData.title', val => {{
+                   if (autoSlug) {{
                      csData.slug = val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
                      if (csData.slug) delete errors.slug;
-                   }
+                   }}
                    if (val) delete errors.title;
-                 });
-                 setTimeout(() => initEditors(), 100);
+                 }});
+                 {init_logic}
                ">
             <include src="./partials/page-header.html" />
             
@@ -147,12 +163,12 @@
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div class="md:col-span-2">
                       <label class="mb-2.5 block font-medium text-black dark:text-white">Project Title <span class="text-error-500">*</span></label>
-                      <input id="field-title" type="text" x-model="csData.title" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" :class="{'border-error-500': errors.title}" />
+                      <input id="field-title" type="text" x-model="csData.title" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" :class="{{'border-error-500': errors.title}}" />
                       <p x-show="errors.title" x-text="errors.title" class="mt-1 text-sm text-error-500"></p>
                     </div>
                     <div class="md:col-span-2">
                       <label class="mb-2.5 block font-medium text-black dark:text-white">Slug <span class="text-error-500">*</span></label>
-                      <input id="field-slug" type="text" x-model="csData.slug" @input="autoSlug = false" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" :class="{'border-error-500': errors.slug}" />
+                      <input id="field-slug" type="text" x-model="csData.slug" @input="autoSlug = false" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" :class="{{'border-error-500': errors.slug}}" />
                       <p x-show="errors.slug" x-text="errors.slug" class="mt-1 text-sm text-error-500"></p>
                     </div>
                     <div class="md:col-span-2">
@@ -418,7 +434,7 @@
                 <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
                   <h3 class="mb-4 text-lg font-bold text-black dark:text-white">Category <span class="text-error-500">*</span></h3>
                   <div>
-                    <select id="field-category" x-model="csData.category" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none text-black dark:text-white focus:border-brand-500 dark:focus:border-brand-500 transition-colors cursor-pointer appearance-none" :class="{'border-error-500': errors.category}">
+                    <select id="field-category" x-model="csData.category" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none text-black dark:text-white focus:border-brand-500 dark:focus:border-brand-500 transition-colors cursor-pointer appearance-none" :class="{{'border-error-500': errors.category}}">
                       <option value="" disabled>Select category...</option>
                       <option value="Branding">Branding</option>
                       <option value="E-commerce">E-commerce</option>
@@ -472,13 +488,31 @@
               </div>
               <div>
                 <h4 class="font-medium text-black dark:text-white">Success</h4>
-                <p class="text-sm text-gray-500 dark:text-gray-400" x-text="'Case Study created successfully.'"></p>
+                <p class="text-sm text-gray-500 dark:text-gray-400" x-text="'{toast_msg}'"></p>
               </div>
             </div>
 
           </div>
-        </main>
-      </div>
-    </div>
-  </body>
-</html>
+        </main>"""
+
+    return html
+
+def process_file(mode, filepath):
+    with open(filepath, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    if "quill-blot-formatter" not in content:
+        content = content.replace(
+            '</head>',
+            '  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">\n    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>\n    <script src="https://cdn.jsdelivr.net/npm/quill-blot-formatter@1.0.5/dist/quill-blot-formatter.min.js"></script>\n  </head>'
+        )
+
+    new_main = generate_html(mode)
+    content = re.sub(r'<main[^>]*>.*?</main>', new_main, content, flags=re.DOTALL)
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(content)
+
+process_file("create", "d:/BANGJEJE.DEV/CMS/admin/src/case-study-create.html")
+process_file("edit", "d:/BANGJEJE.DEV/CMS/admin/src/case-study-edit.html")
+print("Updated case-study-create.html and case-study-edit.html")

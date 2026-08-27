@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Edit Case Study | bangjeje.dev CMS</title>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quill-blot-formatter@1.0.5/dist/quill-blot-formatter.min.js"></script>
   </head>
   <body
     x-data="{  page: 'Case Studies', 'loaded': true, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false, 'pageTitle': 'Edit Case Study', 'pageDescription': 'Modify existing case study.', 'primaryActionText': 'Publish Changes', 'primaryActionUrl': '#', 'secondaryActionText': 'Cancel', 'secondaryActionUrl': 'case-studies.html' , 'darkMode': false }"
@@ -18,21 +21,485 @@
       <include src="./partials/sidebar.html"></include>
       <div class="relative flex flex-col flex-1 overflow-x-hidden overflow-y-auto">
         <include src="./partials/header.html" />
-        <main>
-          <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 lg:p-10">
+                        <main x-data="dashboardData()"  class="relative">
+          <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 lg:p-10" 
+               x-data="{ 
+                 csData: { 
+                   id: "",
+                   title: '', slug: '', description: '', category: '', industry: '', role: '', platform: '', timeline: '', order: '', status: 'draft', featuredImage: null,
+                   overview: { content: '', responsibilities: [] },
+                   challenge: { content: '', considerations: [], points: [] },
+                   objectives: [],
+                   process: [],
+                   deliverables: { description: '', artifacts: [], tools: [], gallery: [null, null, null, null] },
+                   reflection: { content: '' }
+                 },
+                 autoSlug: false,
+                 showToast: false,
+                 errors: {},
+                 
+                 // Temp inputs for tags
+                 tempResp: '', tempCons: '', tempChalPoint: '', tempArtifact: '', tempTool: '',
+                 
+                 initEditors() {
+                   if (typeof Quill !== 'undefined' && typeof QuillBlotFormatter !== 'undefined') {
+                     Quill.register('modules/blotFormatter', QuillBlotFormatter.default);
+                   }
+                   
+                   ['overview', 'challenge', 'deliverables', 'reflection'].forEach(key => {
+                     const config = { theme: 'snow', modules: { blotFormatter: {}, toolbar: [['bold', 'italic', 'underline'], [{ 'header': 2 }, { 'header': 3 }], [{ 'list': 'ordered'}, { 'list': 'bullet' }], ['blockquote', 'code-block'], ['link', 'image'], [{ 'align': [] }], ['clean']] } };
+                     const q = new Quill('#editor-' + key, config);
+                     q.on('text-change', () => {
+                       const html = q.root.innerHTML;
+                       if (key === 'overview') this.csData.overview.content = html === '<p><br></p>' ? '' : html;
+                       if (key === 'challenge') this.csData.challenge.content = html === '<p><br></p>' ? '' : html;
+                       if (key === 'deliverables') this.csData.deliverables.description = html === '<p><br></p>' ? '' : html;
+                       if (key === 'reflection') this.csData.reflection.content = html === '<p><br></p>' ? '' : html;
+                     });
+                     // hydrate
+                     let c = '';
+                     if (key === 'overview') c = this.csData.overview.content;
+                     if (key === 'challenge') c = this.csData.challenge.content;
+                     if (key === 'deliverables') c = this.csData.deliverables.description;
+                     if (key === 'reflection') c = this.csData.reflection.content;
+                     if (c) q.root.innerHTML = c;
+                   });
+                 },
+                 
+                 addTag(arr, tempVar) {
+                   const val = this[tempVar].trim();
+                   if (val && !arr.includes(val)) arr.push(val);
+                   this[tempVar] = '';
+                 },
+                 removeTag(arr, val) {
+                   const idx = arr.indexOf(val);
+                   if(idx > -1) arr.splice(idx, 1);
+                 },
+                 
+                 addObjective() { this.csData.objectives.push({ id: 'obj-'+Date.now(), title: '', description: '', icon: '' }); },
+                 removeObjective(idx) { this.csData.objectives.splice(idx, 1); },
+                 
+                 addProcess() { this.csData.process.push({ id: 'proc-'+Date.now(), phase: '', title: '', description: '' }); },
+                 removeProcess(idx) { this.csData.process.splice(idx, 1); },
+
+                 handleFeaturedImage(e) {
+                   const file = e.target.files[0];
+                   if (file) {
+                     const r = new FileReader(); r.onload = (ev) => this.csData.featuredImage = ev.target.result; r.readAsDataURL(file);
+                   }
+                 },
+                 
+                 handleGallerySlot(e, index) {
+                   const file = e.target.files[0];
+                   if (file) {
+                     const r = new FileReader();
+                     r.onload = (ev) => {
+                       this.csData.deliverables.gallery[index] = ev.target.result;
+                     };
+                     r.readAsDataURL(file);
+                   }
+                   e.target.value = '';
+                 },
+                 removeGallerySlot(index) { this.csData.deliverables.gallery[index] = null; },
+
+                 validate() {
+                   this.errors = {};
+                   if (!this.csData.title.trim()) this.errors.title = 'Title is required';
+                   if (!this.csData.slug.trim()) this.errors.slug = 'Slug is required';
+                   if (!this.csData.category) this.errors.category = 'Category is required';
+                   
+                   if (Object.keys(this.errors).length > 0) {
+                     const el = document.getElementById('field-' + Object.keys(this.errors)[0]);
+                     if (el) el.focus();
+                     return false;
+                   }
+                   return true;
+                 },
+                 
+                 save(status) {
+                   if (!this.validate()) return;
+                   this.csData.status = status;
+                   this.updateCaseStudy(this.csData.id, this.csData);
+                   this.showToast = true;
+                   setTimeout(() => window.location.href = 'case-studies.html', 1000);
+                 }
+               }"
+               x-init="
+                 $watch('csData.title', val => {
+                   if (autoSlug) {
+                     csData.slug = val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+                     if (csData.slug) delete errors.slug;
+                   }
+                   if (val) delete errors.title;
+                 });
+                 
+                 init();
+                 const urlParams = new URLSearchParams(window.location.search);
+                 const csId = urlParams.get('id');
+                 const found = caseStudies.find(a => a.id === csId);
+                 if (found) {
+                   csData = JSON.parse(JSON.stringify({
+                     ...found,
+                     overview: found.overview || { content: '', responsibilities: [] },
+                     challenge: found.challenge || { content: '', considerations: [], points: [] },
+                     objectives: found.objectives || [],
+                     process: found.process || [],
+                     deliverables: found.deliverables || { description: '', artifacts: [], tools: [], gallery: [null, null, null, null] },
+                     reflection: found.reflection || { content: '' },
+                     featuredImage: found.featuredImage || null
+                   }));
+                   // Ensure gallery is exactly 4 slots
+                   if (!csData.deliverables.gallery) csData.deliverables.gallery = [null, null, null, null];
+                   while (csData.deliverables.gallery.length < 4) csData.deliverables.gallery.push(null);
+                   csData.deliverables.gallery = csData.deliverables.gallery.slice(0, 4);
+                 } else {
+                   window.location.href = 'case-studies.html';
+                 }
+                 setTimeout(() => initEditors(), 100);
+        
+               ">
             <include src="./partials/page-header.html" />
-            <div class="flex flex-col gap-8">
-              <!-- Empty State Shell -->
-              <div class="mt-8 flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 dark:border-gray-700 py-12 bg-white dark:bg-gray-900">
-                <div class="mb-4 rounded-full bg-gray-100 dark:bg-gray-800 p-4">
-                  <svg class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
+            
+            <div class="flex flex-col xl:flex-row gap-6 mt-8">
+              
+              <!-- Main Column -->
+              <div class="flex-1 flex flex-col gap-8">
+                
+                <!-- 1. Basic Info -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Basic Information</h3>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="md:col-span-2">
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Project Title <span class="text-error-500">*</span></label>
+                      <input id="field-title" type="text" x-model="csData.title" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" :class="{'border-error-500': errors.title}" />
+                      <p x-show="errors.title" x-text="errors.title" class="mt-1 text-sm text-error-500"></p>
+                    </div>
+                    <div class="md:col-span-2">
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Slug <span class="text-error-500">*</span></label>
+                      <input id="field-slug" type="text" x-model="csData.slug" @input="autoSlug = false" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" :class="{'border-error-500': errors.slug}" />
+                      <p x-show="errors.slug" x-text="errors.slug" class="mt-1 text-sm text-error-500"></p>
+                    </div>
+                    <div class="md:col-span-2">
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Short Description</label>
+                      <textarea rows="2" x-model="csData.description" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white"></textarea>
+                    </div>
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Industry</label>
+                      <input type="text" x-model="csData.industry" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" />
+                    </div>
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Role</label>
+                      <input type="text" x-model="csData.role" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" />
+                    </div>
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Platform</label>
+                      <input type="text" x-model="csData.platform" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" />
+                    </div>
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Timeline</label>
+                      <input type="text" x-model="csData.timeline" placeholder="e.g. 2025 - 2026" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" />
+                    </div>
+                  </div>
                 </div>
-                <h4 class="mb-2 text-lg font-semibold text-black dark:text-white">Component shell ready</h4>
-                <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">This page is structurally complete but awaits functional implementation.</p>
+
+                <!-- 2. Project Overview -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">01. Project Overview</h3>
+                  <div class="flex flex-col gap-5">
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Rich Text Content</label>
+                      <div id="editor-overview" class="w-full rounded-b-lg border-x border-b border-gray-200 dark:border-gray-700 text-black dark:text-white h-48"></div>
+                    </div>
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Responsibilities</label>
+                      <div class="flex flex-wrap gap-2 mb-3" x-show="csData.overview.responsibilities.length > 0">
+                        <template x-for="r in csData.overview.responsibilities" :key="r">
+                          <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-500/10 px-3 py-1 text-sm font-medium text-brand-600 dark:text-brand-500 border border-brand-200 dark:border-brand-500/20">
+                            <span x-text="r"></span>
+                            <button @click="removeTag(csData.overview.responsibilities, r)" class="text-brand-400 hover:text-brand-600"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                          </span>
+                        </template>
+                      </div>
+                      <input type="text" x-model="tempResp" @keydown.enter.prevent="addTag(csData.overview.responsibilities, 'tempResp')" placeholder="Type a responsibility and press Enter..." class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white text-sm" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 3. The Challenge -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">02. The Challenge</h3>
+                  <div class="flex flex-col gap-5">
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Rich Text Content</label>
+                      <div id="editor-challenge" class="w-full rounded-b-lg border-x border-b border-gray-200 dark:border-gray-700 text-black dark:text-white h-48"></div>
+                    </div>
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Core Considerations</label>
+                      <div class="flex flex-wrap gap-2 mb-3" x-show="csData.challenge.considerations.length > 0">
+                        <template x-for="c in csData.challenge.considerations" :key="c">
+                          <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-500/10 px-3 py-1 text-sm font-medium text-brand-600 dark:text-brand-500 border border-brand-200 dark:border-brand-500/20">
+                            <span x-text="c"></span>
+                            <button @click="removeTag(csData.challenge.considerations, c)" class="text-brand-400 hover:text-brand-600"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                          </span>
+                        </template>
+                      </div>
+                      <input type="text" x-model="tempCons" @keydown.enter.prevent="addTag(csData.challenge.considerations, 'tempCons')" placeholder="Type a consideration and press Enter..." class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white text-sm" />
+                    </div>
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Challenge Points</label>
+                      <div class="flex flex-col gap-3 mb-3" x-show="csData.challenge.points.length > 0">
+                        <template x-for="(p, index) in csData.challenge.points" :key="index">
+                          <div class="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3.5 group">
+                            <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-xs font-semibold text-gray-500 dark:text-gray-400" x-text="index + 1"></div>
+                            <span class="flex-1 text-sm text-gray-800 dark:text-gray-200" x-text="p"></span>
+                            <button @click="removeTag(csData.challenge.points, p)" class="text-gray-400 hover:text-error-500 opacity-0 group-hover:opacity-100 transition-opacity" title="Remove Point"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                          </div>
+                        </template>
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <input type="text" x-model="tempChalPoint" @keydown.enter.prevent="addTag(csData.challenge.points, 'tempChalPoint')" placeholder="Type a challenge point and press Enter..." class="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white text-sm" />
+                        <button @click="addTag(csData.challenge.points, 'tempChalPoint')" class="rounded-lg bg-gray-100 dark:bg-gray-800 px-5 py-3 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Add</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 4. Objectives -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <div class="flex justify-between items-center mb-5">
+                    <h3 class="text-lg font-bold text-black dark:text-white">03. Objectives</h3>
+                    <button @click="addObjective()" class="inline-flex items-center gap-2 rounded-lg bg-brand-50 dark:bg-brand-500/10 px-4 py-2 text-sm font-medium text-brand-600 dark:text-brand-500 hover:bg-brand-100 dark:hover:bg-brand-500/20 transition-colors"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> Add Objective</button>
+                  </div>
+                  <div class="flex flex-col gap-4">
+                    <template x-for="(obj, index) in csData.objectives" :key="obj.id">
+                      <div class="relative rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-5 group transition-colors hover:border-gray-300 dark:hover:border-gray-600">
+                        <div class="absolute -top-3 -left-3 flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-xs font-bold text-white shadow-sm" x-text="index + 1"></div>
+                        <button @click="removeObjective(index)" class="absolute top-4 right-4 text-gray-400 hover:text-error-500 transition-colors" title="Remove Objective"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pr-8">
+                          <div>
+                            <label class="mb-1.5 block text-xs font-medium text-gray-500">Objective Title</label>
+                            <input type="text" x-model="obj.title" placeholder="e.g. Increase Conversion" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" />
+                          </div>
+                          <div>
+                            <label class="mb-1.5 block text-xs font-medium text-gray-500">Icon / Stat (Optional)</label>
+                            <input type="text" x-model="obj.icon" placeholder="e.g. 20%" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" />
+                          </div>
+                          <div class="md:col-span-2">
+                            <label class="mb-1.5 block text-xs font-medium text-gray-500">Description</label>
+                            <textarea rows="2" x-model="obj.description" placeholder="Describe the objective or result..." class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white"></textarea>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                    <div x-show="csData.objectives.length === 0" class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 py-10 bg-gray-50 dark:bg-gray-800/30">
+                      <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">No objectives added yet.</p>
+                      <button @click="addObjective()" class="text-sm font-medium text-brand-500 hover:text-brand-600 transition-colors">Click to add an objective</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 5. Process -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <div class="flex justify-between items-center mb-5">
+                    <h3 class="text-lg font-bold text-black dark:text-white">04. Process</h3>
+                    <button @click="addProcess()" class="inline-flex items-center gap-2 rounded-lg bg-brand-50 dark:bg-brand-500/10 px-4 py-2 text-sm font-medium text-brand-600 dark:text-brand-500 hover:bg-brand-100 dark:hover:bg-brand-500/20 transition-colors"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> Add Step</button>
+                  </div>
+                  <div class="flex flex-col gap-4">
+                    <template x-for="(proc, index) in csData.process" :key="proc.id">
+                      <div class="relative flex items-start gap-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-5 group transition-colors hover:border-gray-300 dark:hover:border-gray-600">
+                        <div class="flex flex-col items-center mt-1">
+                           <div class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-500/20 text-sm font-bold text-brand-600 dark:text-brand-400" x-text="index + 1"></div>
+                           <div class="h-full w-px bg-gray-200 dark:bg-gray-700 my-2" x-show="index !== csData.process.length - 1" style="min-height: 40px;"></div>
+                        </div>
+                        <div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-5 pr-8">
+                          <button @click="removeProcess(index)" class="absolute top-5 right-5 text-gray-400 hover:text-error-500 transition-colors" title="Remove Step"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                          
+                          <div class="md:col-span-1">
+                            <label class="mb-1.5 block text-xs font-medium text-gray-500">Phase Indicator</label>
+                            <input type="text" x-model="proc.phase" placeholder="e.g. Phase 01" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" />
+                          </div>
+                          <div class="md:col-span-2">
+                            <label class="mb-1.5 block text-xs font-medium text-gray-500">Step Title</label>
+                            <input type="text" x-model="proc.title" placeholder="e.g. Discovery & Research" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white" />
+                          </div>
+                          <div class="md:col-span-3">
+                            <label class="mb-1.5 block text-xs font-medium text-gray-500">Description</label>
+                            <textarea rows="2" x-model="proc.description" placeholder="Detail the work done in this phase..." class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-2.5 text-sm outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white"></textarea>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                    <div x-show="csData.process.length === 0" class="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 py-10 bg-gray-50 dark:bg-gray-800/30">
+                      <p class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">No process timeline steps added.</p>
+                      <button @click="addProcess()" class="text-sm font-medium text-brand-500 hover:text-brand-600 transition-colors">Click to add a timeline step</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 6. Deliverables -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">05. Deliverables</h3>
+                  <div class="flex flex-col gap-7">
+                    <div>
+                      <label class="mb-2.5 block font-medium text-black dark:text-white">Rich Text Description</label>
+                      <div id="editor-deliverables" class="w-full rounded-b-lg border-x border-b border-gray-200 dark:border-gray-700 text-black dark:text-white h-48"></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label class="mb-2.5 block font-medium text-black dark:text-white">Project Artifacts</label>
+                        <div class="flex flex-wrap gap-2 mb-3" x-show="csData.deliverables.artifacts.length > 0">
+                          <template x-for="a in csData.deliverables.artifacts" :key="a">
+                            <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-500/10 px-3 py-1 text-sm font-medium text-brand-600 dark:text-brand-500 border border-brand-200 dark:border-brand-500/20">
+                              <span x-text="a"></span>
+                              <button @click="removeTag(csData.deliverables.artifacts, a)" class="text-brand-400 hover:text-brand-600"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                            </span>
+                          </template>
+                        </div>
+                        <input type="text" x-model="tempArtifact" @keydown.enter.prevent="addTag(csData.deliverables.artifacts, 'tempArtifact')" placeholder="Add artifact and press Enter..." class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white text-sm" />
+                      </div>
+                      <div>
+                        <label class="mb-2.5 block font-medium text-black dark:text-white">Tools</label>
+                        <div class="flex flex-wrap gap-2 mb-3" x-show="csData.deliverables.tools.length > 0">
+                          <template x-for="t in csData.deliverables.tools" :key="t">
+                            <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-50 dark:bg-brand-500/10 px-3 py-1 text-sm font-medium text-brand-600 dark:text-brand-500 border border-brand-200 dark:border-brand-500/20">
+                              <span x-text="t"></span>
+                              <button @click="removeTag(csData.deliverables.tools, t)" class="text-brand-400 hover:text-brand-600"><svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                            </span>
+                          </template>
+                        </div>
+                        <input type="text" x-model="tempTool" @keydown.enter.prevent="addTag(csData.deliverables.tools, 'tempTool')" placeholder="Add tool and press Enter..." class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none focus:border-brand-500 dark:focus:border-brand-500 text-black dark:text-white text-sm" />
+                      </div>
+                    </div>
+                    
+                    <div class="border-t border-gray-200 dark:border-gray-800 pt-6">
+                      <div class="mb-4">
+                        <label class="block font-bold text-black dark:text-white text-lg">Project Gallery</label>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Exactly 4 fixed slots that map directly to the public Case Study template layout.</p>
+                      </div>
+                      
+                      <div class="grid grid-cols-2 gap-4">
+                        <template x-for="(idx) in [0, 1, 2, 3]">
+                          <div class="relative flex flex-col rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 overflow-hidden aspect-video transition-colors hover:border-brand-300 dark:hover:border-brand-500/50">
+                            <!-- Empty State -->
+                            <div x-show="!csData.deliverables.gallery[idx]" class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center cursor-pointer" @click="document.getElementById('gallery-upload-' + idx).click()">
+                              <div class="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-400">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                              </div>
+                              <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" x-text="'SLOT 0' + (idx + 1)"></span>
+                              <span class="mt-1 text-xs text-gray-400">Click to upload</span>
+                            </div>
+                            
+                            <!-- Filled State -->
+                            <div x-show="csData.deliverables.gallery[idx]" class="absolute inset-0 group">
+                              <img :src="csData.deliverables.gallery[idx]" class="h-full w-full object-cover" />
+                              <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                                <span class="absolute top-3 left-3 rounded bg-black/50 px-2 py-1 text-xs font-bold text-white uppercase" x-text="'SLOT 0' + (idx + 1)"></span>
+                                <div class="flex gap-2">
+                                  <button @click="document.getElementById('gallery-upload-' + idx).click()" class="rounded-lg bg-white/20 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/40 transition-colors backdrop-blur-sm">Replace</button>
+                                  <button @click="removeGallerySlot(idx)" class="rounded-lg bg-error-500/80 px-3 py-1.5 text-sm font-medium text-white hover:bg-error-500 transition-colors backdrop-blur-sm">Remove</button>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <input :id="'gallery-upload-' + idx" type="file" accept="image/*" class="hidden" @change="(e) => handleGallerySlot(e, idx)" />
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 7. Reflection -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">07. Reflection</h3>
+                  <div>
+                    <label class="mb-2.5 block font-medium text-black dark:text-white">Rich Text Content</label>
+                    <div id="editor-reflection" class="w-full rounded-b-lg border-x border-b border-gray-200 dark:border-gray-700 text-black dark:text-white h-48"></div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Sidebar Column -->
+              <div class="w-full xl:w-1/3 flex flex-col gap-6">
+                <!-- Publishing -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-5 text-lg font-bold text-black dark:text-white">Publishing</h3>
+                  <div class="mb-5 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-4" x-show="csData.updatedAt">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Current Status: <span class="font-bold text-black dark:text-white" x-text="formatStatus(csData.status)"></span></p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-2" x-show="csData.publishedAt">Published: <span class="font-medium text-black dark:text-white" x-text="formatDate(csData.publishedAt)"></span></p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Last edited: <span class="font-medium text-black dark:text-white" x-text="formatDate(csData.updatedAt)"></span></p>
+                  </div>
+                  <div class="flex flex-col gap-3">
+                    <button @click="save('published')" class="flex w-full items-center justify-center rounded-lg bg-brand-500 px-5 py-3 font-medium text-white hover:bg-brand-600 transition-colors shadow-sm" x-text="csData.status === 'published' ? 'Update Case Study' : 'Publish Now'"></button>
+                    <button @click="save('draft')" class="flex w-full items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-5 py-3 font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" x-show="csData.status !== 'draft'">Switch to Draft</button>
+                    <button @click="save('draft')" class="flex w-full items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-5 py-3 font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" x-show="csData.status === 'draft'">Save Draft</button>
+                  </div>
+                </div>
+                
+                <!-- Category -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-4 text-lg font-bold text-black dark:text-white">Category <span class="text-error-500">*</span></h3>
+                  <div>
+                    <select id="field-category" x-model="csData.category" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none text-black dark:text-white focus:border-brand-500 dark:focus:border-brand-500 transition-colors cursor-pointer appearance-none" :class="{'border-error-500': errors.category}">
+                      <option value="" disabled>Select category...</option>
+                      <option value="Branding">Branding</option>
+                      <option value="E-commerce">E-commerce</option>
+                      <option value="Enterprise">Enterprise</option>
+                      <option value="SaaS">SaaS</option>
+                      <option value="Mobile App">Mobile App</option>
+                    </select>
+                    <p x-show="errors.category" x-text="errors.category" class="mt-1 text-sm text-error-500"></p>
+                  </div>
+                </div>
+
+                <!-- Ordering -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-1 text-lg font-bold text-black dark:text-white">Global Order</h3>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Lower numbers appear first. Determines Next/Prev navigation.</p>
+                  <div>
+                    <input type="number" x-model.number="csData.order" class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent px-5 py-3 outline-none text-black dark:text-white focus:border-brand-500 dark:focus:border-brand-500 transition-colors" />
+                  </div>
+                </div>
+
+                <!-- Featured Image -->
+                <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-theme-sm">
+                  <h3 class="mb-4 text-lg font-bold text-black dark:text-white">Featured Image</h3>
+                  <div class="flex flex-col gap-4">
+                    <div x-show="!csData.featuredImage" class="relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-10 text-center hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors" @click="document.getElementById('featured-upload').click()">
+                      <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white dark:bg-gray-800 shadow-sm text-gray-400">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                      </div>
+                      <p class="text-sm font-medium text-black dark:text-white">Click to upload image</p>
+                      <p class="text-xs text-gray-500 mt-1">Recommended size: 1200x800px</p>
+                    </div>
+                    <div x-show="csData.featuredImage" class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 group shadow-sm" style="display: none;">
+                      <img :src="csData.featuredImage" class="w-full h-auto aspect-[4/3] object-cover" />
+                      <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                        <button @click="document.getElementById('featured-upload').click()" class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100 transition-colors shadow-sm">Replace Image</button>
+                        <button @click="csData.featuredImage = null; document.getElementById('featured-upload').value = ''" class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600 transition-colors shadow-sm">Remove Image</button>
+                      </div>
+                    </div>
+                    <input id="featured-upload" type="file" accept="image/*" class="hidden" @change="handleFeaturedImage" />
+                  </div>
+                </div>
+
+              </div>
+              
+            </div>
+
+            <!-- Toast -->
+            <div x-show="showToast" x-transition class="fixed bottom-10 right-10 z-[99999] flex w-full max-w-xs items-center gap-4 rounded-xl bg-white dark:bg-gray-900 px-5 py-4 shadow-theme-md border border-gray-100 dark:border-gray-800" style="display: none;">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-success-50 dark:bg-success-500/15 text-success-500">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+              </div>
+              <div>
+                <h4 class="font-medium text-black dark:text-white">Success</h4>
+                <p class="text-sm text-gray-500 dark:text-gray-400" x-text="'Case Study updated successfully.'"></p>
               </div>
             </div>
+
           </div>
         </main>
       </div>
